@@ -51,7 +51,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <nav className="flex-1 space-y-1 px-3 py-4">
           {navItems.map((item) => {
             const isActive = location.pathname === item.path ||
-              (item.path === '/tickets' && location.pathname.startsWith('/tickets/') && item.path !== '/tickets/new');
+              (item.path === '/tickets' && location.pathname.startsWith('/tickets/') && !location.pathname.includes('/new'));
             return (
               <Link
                 key={item.path}
