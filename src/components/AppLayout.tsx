@@ -2,15 +2,16 @@ import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  LayoutDashboard, Ticket, Plus, BarChart3, Settings, LogOut,
-  ChevronLeft, ChevronRight, Bell, Search, Menu, X
+  LayoutDashboard, Ticket, Plus, BarChart3, Settings, 
+  ChevronLeft, ChevronRight, Bell, Search, Menu
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { currentUser } from '@/data/mock';
+import { useRole } from '@/contexts/RoleContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import RoleSwitcher from '@/components/RoleSwitcher';
 
-const navItems = [
+const analystNav = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
   { icon: Ticket, label: 'Chamados', path: '/tickets' },
   { icon: Plus, label: 'Novo Chamado', path: '/tickets/new' },
@@ -18,12 +19,17 @@ const navItems = [
   { icon: Settings, label: 'Configurações', path: '/settings' },
 ];
 
-function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
+const requesterNav = [
+  { icon: LayoutDashboard, label: 'Meus Chamados', path: '/' },
+  { icon: Plus, label: 'Abrir Chamado', path: '/tickets/new' },
+];
+
+function NavItems({ items, onNavigate }: { items: typeof analystNav; onNavigate?: () => void }) {
   const location = useLocation();
 
   return (
     <nav className="flex-1 space-y-1 px-3 py-4">
-      {navItems.map((item) => {
+      {items.map((item) => {
         const isActive = location.pathname === item.path ||
           (item.path === '/tickets' && location.pathname.startsWith('/tickets/') && !location.pathname.includes('/new'));
         return (
@@ -51,7 +57,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const isMobile = useIsMobile();
+  const { role, currentUser } = useRole();
   const location = useLocation();
+
+  const navItems = role === 'REQUESTER' ? requesterNav : analystNav;
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -62,7 +71,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           transition={{ duration: 0.2, ease: 'easeInOut' }}
           className="flex flex-col border-r border-border bg-sidebar shrink-0"
         >
-          {/* Logo */}
           <div className="flex h-16 items-center gap-3 border-b border-border px-4">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary">
               <Ticket className="h-4 w-4 text-primary-foreground" />
@@ -81,7 +89,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </AnimatePresence>
           </div>
 
-          {/* Nav */}
           <nav className="flex-1 space-y-1 px-3 py-4">
             {navItems.map((item) => {
               const isActive = location.pathname === item.path ||
@@ -115,7 +122,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             })}
           </nav>
 
-          {/* Collapse toggle */}
           <div className="border-t border-border p-3">
             <button
               onClick={() => setCollapsed(!collapsed)}
@@ -127,12 +133,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </motion.aside>
       )}
 
-      {/* Main content */}
       <div className="flex flex-1 flex-col overflow-hidden">
-        {/* Top bar */}
         <header className="flex h-14 sm:h-16 items-center justify-between border-b border-border px-4 sm:px-6">
           <div className="flex items-center gap-3">
-            {/* Mobile hamburger */}
             {isMobile && (
               <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
                 <SheetTrigger asChild>
@@ -149,8 +152,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                       Portal de Chamados
                     </span>
                   </div>
-                  <SidebarNav onNavigate={() => setMobileOpen(false)} />
-                  {/* User info at bottom */}
+                  <NavItems items={navItems} onNavigate={() => setMobileOpen(false)} />
                   <div className="border-t border-border p-4">
                     <div className="flex items-center gap-3">
                       <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/20 text-xs font-medium text-primary">
@@ -158,7 +160,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                       </div>
                       <div>
                         <p className="text-sm font-medium text-foreground">{currentUser.name}</p>
-                        <p className="text-xs text-muted-foreground capitalize">{currentUser.role.toLowerCase()}</p>
+                        <p className="text-xs text-muted-foreground capitalize">{role === 'REQUESTER' ? 'Usuário' : role === 'MANAGER' ? 'Gestor' : 'Analista'}</p>
                       </div>
                     </div>
                   </div>
@@ -175,7 +177,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </div>
           </div>
           <div className="flex items-center gap-2 sm:gap-4">
-            {/* Mobile search */}
+            <RoleSwitcher />
             {isMobile && (
               <button className="rounded-md p-2 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors">
                 <Search className="h-4 w-4" />
@@ -191,13 +193,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               </div>
               <div>
                 <p className="text-sm font-medium text-foreground">{currentUser.name}</p>
-                <p className="text-xs text-muted-foreground capitalize">{currentUser.role.toLowerCase()}</p>
+                <p className="text-xs text-muted-foreground capitalize">{role === 'REQUESTER' ? 'Usuário' : role === 'MANAGER' ? 'Gestor' : 'Analista'}</p>
               </div>
             </div>
           </div>
         </header>
 
-        {/* Page content */}
         <main className="flex-1 overflow-y-auto bg-glow">
           <div className="p-4 sm:p-6">
             {children}
