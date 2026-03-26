@@ -1,10 +1,9 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Filter, SlidersHorizontal } from 'lucide-react';
 import { StatusBadge, PriorityBadge } from '@/components/TicketBadges';
 import { mockTickets } from '@/data/mock';
-import type { TicketStatus, TicketPriority } from '@/types/ticket';
+import type { TicketStatus } from '@/types/ticket';
 import { cn } from '@/lib/utils';
 
 const statusFilters: { value: TicketStatus | 'ALL'; label: string }[] = [
@@ -24,28 +23,28 @@ export default function TicketList() {
     : mockTickets.filter(t => t.status === statusFilter);
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold font-display text-foreground">Chamados</h1>
+          <h1 className="text-xl sm:text-2xl font-bold font-display text-foreground">Chamados</h1>
           <p className="mt-1 text-sm text-muted-foreground">{mockTickets.length} chamados no total</p>
         </div>
         <Link
           to="/tickets/new"
-          className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+          className="inline-flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
         >
           + Novo Chamado
         </Link>
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0 sm:flex-wrap">
         {statusFilters.map((f) => (
           <button
             key={f.value}
             onClick={() => setStatusFilter(f.value)}
             className={cn(
-              'rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
+              'shrink-0 rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
               statusFilter === f.value
                 ? 'bg-primary/15 text-primary border border-primary/30'
                 : 'bg-secondary text-secondary-foreground border border-border hover:bg-secondary/80'
@@ -56,8 +55,46 @@ export default function TicketList() {
         ))}
       </div>
 
-      {/* Table */}
-      <div className="rounded-lg border border-border card-gradient overflow-hidden">
+      {/* Mobile: Card layout */}
+      <div className="space-y-3 sm:hidden">
+        {filtered.map((ticket, i) => (
+          <motion.div
+            key={ticket.id}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: i * 0.03 }}
+          >
+            <Link
+              to={`/tickets/${ticket.id}`}
+              className="block rounded-lg border border-border card-gradient p-4 transition-colors hover:bg-secondary/40"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-xs text-muted-foreground">#{ticket.ticketNumber}</span>
+                    <PriorityBadge priority={ticket.priority} />
+                  </div>
+                  <p className="mt-1.5 text-sm font-medium text-foreground truncate">{ticket.title}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{ticket.requester.name}</p>
+                </div>
+                <StatusBadge status={ticket.status} />
+              </div>
+              <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full" style={{ backgroundColor: ticket.category.color }} />
+                  <span>{ticket.category.name}</span>
+                </div>
+                <span>
+                  {new Date(ticket.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                </span>
+              </div>
+            </Link>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* Desktop: Table layout */}
+      <div className="hidden sm:block rounded-lg border border-border card-gradient overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>

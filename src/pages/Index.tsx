@@ -23,7 +23,7 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold font-display text-foreground">Dashboard</h1>
+        <h1 className="text-xl sm:text-2xl font-bold font-display text-foreground">Dashboard</h1>
         <p className="mt-1 text-sm text-muted-foreground">Visão geral dos chamados de hoje, 25 de março de 2026</p>
       </div>
 
@@ -32,7 +32,7 @@ export default function Dashboard() {
         variants={container}
         initial="hidden"
         animate="show"
-        className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
+        className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4"
       >
         {stats.map((stat) => (
           <motion.div key={stat.title} variants={item}>
@@ -44,7 +44,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Recent tickets */}
         <div className="lg:col-span-2 rounded-lg border border-border card-gradient">
-          <div className="flex items-center justify-between border-b border-border px-5 py-4">
+          <div className="flex items-center justify-between border-b border-border px-4 sm:px-5 py-4">
             <h2 className="text-sm font-semibold font-display text-foreground">Chamados Recentes</h2>
             <Link to="/tickets" className="text-xs font-medium text-primary hover:underline">
               Ver todos
@@ -55,7 +55,7 @@ export default function Dashboard() {
               <Link
                 key={ticket.id}
                 to={`/tickets/${ticket.id}`}
-                className="flex items-center gap-4 px-5 py-3.5 transition-colors hover:bg-secondary/50"
+                className="flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3 sm:py-3.5 transition-colors hover:bg-secondary/50"
               >
                 <span className="shrink-0 font-mono text-xs text-muted-foreground">#{ticket.ticketNumber}</span>
                 <div className="min-w-0 flex-1">
@@ -64,6 +64,10 @@ export default function Dashboard() {
                 </div>
                 <div className="hidden items-center gap-2 sm:flex">
                   <PriorityBadge priority={ticket.priority} />
+                  <StatusBadge status={ticket.status} />
+                </div>
+                {/* Mobile: show only status */}
+                <div className="flex sm:hidden">
                   <StatusBadge status={ticket.status} />
                 </div>
               </Link>
