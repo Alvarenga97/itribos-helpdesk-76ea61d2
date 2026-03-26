@@ -3,28 +3,33 @@ import { motion } from 'framer-motion';
 import { ArrowLeft, Clock, User, MessageSquare, Paperclip, Star, Lock } from 'lucide-react';
 import { StatusBadge, PriorityBadge } from '@/components/TicketBadges';
 import { mockTickets, mockComments, mockStarSummary } from '@/data/mock';
+import { useRole } from '@/contexts/RoleContext';
 import { cn } from '@/lib/utils';
 
 export default function TicketDetail() {
   const { id } = useParams();
+  const { role } = useRole();
+  const isRequester = role === 'REQUESTER';
   const ticket = mockTickets.find(t => t.id === id);
 
   if (!ticket) {
     return (
       <div className="flex flex-col items-center justify-center py-20">
         <p className="text-lg font-medium text-foreground">Chamado não encontrado</p>
-        <Link to="/tickets" className="mt-4 text-sm text-primary hover:underline">Voltar aos chamados</Link>
+        <Link to={isRequester ? '/' : '/tickets'} className="mt-4 text-sm text-primary hover:underline">Voltar</Link>
       </div>
     );
   }
 
-  const comments = mockComments.filter(c => c.ticketId === ticket.id);
+  const allComments = mockComments.filter(c => c.ticketId === ticket.id);
+  // Requesters don't see internal notes
+  const comments = isRequester ? allComments.filter(c => !c.isInternal) : allComments;
   const star = ticket.id === '4' ? mockStarSummary : null;
   const slaTime = ticket.slaDeadline ? new Date(ticket.slaDeadline) : null;
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <Link to="/tickets" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+      <Link to={isRequester ? '/' : '/tickets'} className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
         <ArrowLeft className="h-4 w-4" /> Voltar
       </Link>
 
@@ -35,39 +40,57 @@ export default function TicketDetail() {
             <span className="font-mono text-sm text-muted-foreground">#{ticket.ticketNumber}</span>
             <StatusBadge status={ticket.status} />
             <PriorityBadge priority={ticket.priority} />
-            {ticket.slaBreached && (
+            {ticket.slaBreached && !isRequester && (
               <span className="inline-flex items-center gap-1 rounded-full border border-destructive/30 bg-destructive/15 px-2.5 py-0.5 text-xs font-medium text-destructive">
                 SLA Violado
               </span>
             )}
           </div>
           <h1 className="text-lg sm:text-xl font-bold font-display text-foreground">{ticket.title}</h1>
-          {ticket.status !== 'CLOSED' && ticket.status !== 'RESOLVED' && (
+          
+          {/* Analyst: resolve button | Requester: CSAT rating if resolved */}
+          {!isRequester && ticket.status !== 'CLOSED' && ticket.status !== 'RESOLVED' && (
             <button className="self-start rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors">
               Resolver Chamado
             </button>
           )}
+          {isRequester && ticket.status === 'RESOLVED' && !ticket.csatScore && (
+            <div className="self-start rounded-lg border border-warning/30 bg-warning/5 p-4">
+              <p className="text-sm font-medium text-foreground">Como foi o atendimento?</p>
+              <p className="mt-1 text-xs text-muted-foreground">Avalie de 1 a 5 estrelas</p>
+              <div className="mt-2 flex items-center gap-1">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <button key={i} className="text-border hover:text-warning transition-colors">
+                    <Star className="h-6 w-6" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Details panel on mobile first, then grid on lg */}
         <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
-          {/* Sidebar info - shows first on mobile */}
+          {/* Sidebar info */}
           <div className="order-first lg:order-last space-y-4">
             <div className="rounded-lg border border-border card-gradient p-4 sm:p-5">
               <h3 className="text-sm font-semibold font-display text-foreground">Detalhes</h3>
               <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-1 sm:gap-3">
-                <div>
-                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Solicitante</span>
-                  <div className="mt-1 flex items-center gap-2">
-                    <User className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span className="text-sm text-foreground">{ticket.requester.name}</span>
+                {!isRequester && (
+                  <div>
+                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Solicitante</span>
+                    <div className="mt-1 flex items-center gap-2">
+                      <User className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="text-sm text-foreground">{ticket.requester.name}</span>
+                    </div>
                   </div>
-                </div>
+                )}
                 <div>
-                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Atribuído a</span>
+                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                    {isRequester ? 'Analista responsável' : 'Atribuído a'}
+                  </span>
                   <div className="mt-1 flex items-center gap-2">
                     <User className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span className="text-sm text-foreground">{ticket.assignee?.name || 'Não atribuído'}</span>
+                    <span className="text-sm text-foreground">{ticket.assignee?.name || 'Aguardando atribuição'}</span>
                   </div>
                 </div>
                 <div>
@@ -77,7 +100,7 @@ export default function TicketDetail() {
                     <span className="text-sm text-foreground">{ticket.category.name}</span>
                   </div>
                 </div>
-                {slaTime && (
+                {!isRequester && slaTime && (
                   <div>
                     <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Prazo SLA</span>
                     <div className="mt-1 flex items-center gap-2">
@@ -130,8 +153,8 @@ export default function TicketDetail() {
               )}
             </div>
 
-            {/* STAR Summary */}
-            {star && (
+            {/* STAR Summary - only for analysts */}
+            {star && !isRequester && (
               <div className="rounded-lg border border-warning/30 bg-warning/5 p-4 sm:p-5">
                 <div className="flex items-center gap-2">
                   <Star className="h-4 w-4 text-warning" />
@@ -193,15 +216,19 @@ export default function TicketDetail() {
               {/* Add comment */}
               <div className="mt-4 space-y-3">
                 <textarea
-                  placeholder="Adicionar comentário..."
+                  placeholder={isRequester ? 'Enviar uma mensagem...' : 'Adicionar comentário...'}
                   className="w-full rounded-md border border-border bg-secondary p-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-none"
                   rows={3}
                 />
                 <div className="flex items-center justify-between">
-                  <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <input type="checkbox" className="rounded border-border" />
-                    <Lock className="h-3 w-3" /> Nota interna
-                  </label>
+                  {!isRequester ? (
+                    <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <input type="checkbox" className="rounded border-border" />
+                      <Lock className="h-3 w-3" /> Nota interna
+                    </label>
+                  ) : (
+                    <span />
+                  )}
                   <button className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90">
                     Enviar
                   </button>
