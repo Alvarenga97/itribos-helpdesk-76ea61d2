@@ -88,8 +88,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           className="flex flex-col border-r border-border bg-sidebar shrink-0"
         >
           <div className="flex h-16 items-center gap-3 border-b border-border px-4">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary">
-              <Ticket className="h-4 w-4 text-primary-foreground" />
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg overflow-hidden bg-white/10 p-1">
+              <img src="https://cdn.sistemawbuy.com.br/arquivos/3fac13b25897bebafe33e01ce43c46e7/config/favicon-itribos-301.png" alt="iTribos" className="h-full w-full object-contain" />
             </div>
             <AnimatePresence>
               {!collapsed && (
@@ -161,8 +161,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 </SheetTrigger>
                 <SheetContent side="left" className="w-64 p-0 bg-sidebar border-border">
                   <div className="flex h-14 items-center gap-3 border-b border-border px-4">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary">
-                      <Ticket className="h-4 w-4 text-primary-foreground" />
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg overflow-hidden bg-white/10 p-1">
+                      <img src="https://cdn.sistemawbuy.com.br/arquivos/3fac13b25897bebafe33e01ce43c46e7/config/favicon-itribos-301.png" alt="iTribos" className="h-full w-full object-contain" />
                     </div>
                     <span className="font-display text-sm font-semibold text-foreground">
                       Portal de Chamados

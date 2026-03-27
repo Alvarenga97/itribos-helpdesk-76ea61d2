@@ -1,6 +1,11 @@
 import { motion } from 'framer-motion';
+import { toast } from 'sonner';
 
 export default function SettingsPage() {
+  const handleSave = () => {
+    toast.success('Configurações salvas com sucesso!');
+  };
+
   const inputClass = 'w-full rounded-md border border-border bg-secondary px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring';
   const labelClass = 'block text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1.5';
 
@@ -81,7 +86,10 @@ export default function SettingsPage() {
         </div>
 
         <div className="flex justify-end">
-          <button className="rounded-md bg-primary px-6 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors">
+          <button 
+            onClick={handleSave}
+            className="rounded-md bg-primary px-6 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+          >
             Salvar Alterações
           </button>
         </div>
