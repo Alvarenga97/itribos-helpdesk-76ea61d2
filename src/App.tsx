@@ -9,29 +9,10 @@ import RoleRouter from "@/components/RoleRouter";
 import TicketDetail from "./pages/TicketDetail";
 import NewTicket from "./pages/NewTicket";
 import Login from "./pages/Login";
+import UserManagement from "./pages/UserManagement";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
-
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useRole();
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
-  return <>{children}</>;
-}
-
-const AppRoutes = () => (
-  <Routes>
-    <Route path="/login" element={<Login />} />
-    <Route path="/" element={<ProtectedRoute><AppLayout><RoleRouter page="home" /></AppLayout></ProtectedRoute>} />
-    <Route path="/tickets" element={<ProtectedRoute><AppLayout><RoleRouter page="tickets" /></AppLayout></ProtectedRoute>} />
-    <Route path="/tickets/new" element={<ProtectedRoute><AppLayout><NewTicket /></AppLayout></ProtectedRoute>} />
-    <Route path="/tickets/:id" element={<ProtectedRoute><AppLayout><TicketDetail /></AppLayout></ProtectedRoute>} />
-    <Route path="/reports" element={<ProtectedRoute><AppLayout><RoleRouter page="reports" /></AppLayout></ProtectedRoute>} />
-    <Route path="/settings" element={<ProtectedRoute><AppLayout><RoleRouter page="settings" /></AppLayout></ProtectedRoute>} />
-    <Route path="/users" element={<ProtectedRoute><AppLayout><RoleRouter page="users" /></AppLayout></ProtectedRoute>} />
-    <Route path="*" element={<NotFound />} />
-  </Routes>
-);
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -40,7 +21,16 @@ const App = () => (
       <Sonner />
       <RoleProvider>
         <BrowserRouter>
-          <AppRoutes />
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/" element={<AppLayout><RoleRouter page="home" /></AppLayout>} />
+            <Route path="/tickets" element={<AppLayout><RoleRouter page="tickets" /></AppLayout>} />
+            <Route path="/tickets/new" element={<AppLayout><NewTicket /></AppLayout>} />
+            <Route path="/tickets/:id" element={<AppLayout><TicketDetail /></AppLayout>} />
+            <Route path="/reports" element={<AppLayout><RoleRouter page="reports" /></AppLayout>} />
+            <Route path="/settings" element={<AppLayout><RoleRouter page="settings" /></AppLayout>} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
         </BrowserRouter>
       </RoleProvider>
     </TooltipProvider>

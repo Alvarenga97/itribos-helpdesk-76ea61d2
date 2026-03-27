@@ -1,41 +1,39 @@
-import { createContext, useContext, useState, type ReactNode } from 'react';
-import type { User, UserRole } from '@/types/ticket';
-import { mockUsers } from '@/data/mock';
+import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import type { UserRole } from '@/types/ticket';
+import { authService, AuthUser } from '@/lib/auth-service';
 
 interface RoleContextType {
   role: UserRole;
-  currentUser: User;
+  currentUser: AuthUser | null;
   isAuthenticated: boolean;
-  users: User[];
-  login: (userId: string) => void;
+  login: (authUser: AuthUser) => void;
   logout: () => void;
-  updateUserRole: (userId: string, newRole: UserRole) => void;
-  addUser: (user: User) => void;
 }
 
 const RoleContext = createContext<RoleContextType | null>(null);
 
 export function RoleProvider({ children }: { children: ReactNode }) {
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [users, setUsers] = useState<User[]>([...mockUsers]);
+  const [user, setUser] = useState<AuthUser | null>(authService.getCurrentUser());
 
-  const currentUser = users.find(u => u.id === currentUserId) ?? users[0];
-  const isAuthenticated = currentUserId !== null;
-  const role = currentUser.role;
-
-  const login = (userId: string) => setCurrentUserId(userId);
-  const logout = () => setCurrentUserId(null);
-
-  const updateUserRole = (userId: string, newRole: UserRole) => {
-    setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u));
+  const login = (authUser: AuthUser) => {
+    setUser(authUser);
   };
 
-  const addUser = (user: User) => {
-    setUsers(prev => [...prev, user]);
+  const logout = () => {
+    authService.logout();
+    setUser(null);
   };
+
+  const role = user?.role || 'REQUESTER';
 
   return (
-    <RoleContext.Provider value={{ role, currentUser, isAuthenticated, users, login, logout, updateUserRole, addUser }}>
+    <RoleContext.Provider value={{ 
+      role, 
+      currentUser: user, 
+      isAuthenticated: !!user,
+      login, 
+      logout 
+    }}>
       {children}
     </RoleContext.Provider>
   );
