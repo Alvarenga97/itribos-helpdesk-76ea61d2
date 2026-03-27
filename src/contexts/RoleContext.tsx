@@ -1,27 +1,41 @@
 import { createContext, useContext, useState, type ReactNode } from 'react';
-import type { UserRole } from '@/types/ticket';
+import type { User, UserRole } from '@/types/ticket';
 import { mockUsers } from '@/data/mock';
 
 interface RoleContextType {
   role: UserRole;
-  setRole: (role: UserRole) => void;
-  currentUser: typeof mockUsers[0];
+  currentUser: User;
+  isAuthenticated: boolean;
+  users: User[];
+  login: (userId: string) => void;
+  logout: () => void;
+  updateUserRole: (userId: string, newRole: UserRole) => void;
+  addUser: (user: User) => void;
 }
 
 const RoleContext = createContext<RoleContextType | null>(null);
 
 export function RoleProvider({ children }: { children: ReactNode }) {
-  const [role, setRole] = useState<UserRole>('AGENT');
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [users, setUsers] = useState<User[]>([...mockUsers]);
 
-  // Pick a user matching the current role
-  const currentUser = role === 'REQUESTER'
-    ? mockUsers.find(u => u.role === 'REQUESTER')!
-    : role === 'MANAGER'
-      ? mockUsers.find(u => u.role === 'MANAGER')!
-      : mockUsers.find(u => u.role === 'AGENT')!;
+  const currentUser = users.find(u => u.id === currentUserId) ?? users[0];
+  const isAuthenticated = currentUserId !== null;
+  const role = currentUser.role;
+
+  const login = (userId: string) => setCurrentUserId(userId);
+  const logout = () => setCurrentUserId(null);
+
+  const updateUserRole = (userId: string, newRole: UserRole) => {
+    setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u));
+  };
+
+  const addUser = (user: User) => {
+    setUsers(prev => [...prev, user]);
+  };
 
   return (
-    <RoleContext.Provider value={{ role, setRole, currentUser }}>
+    <RoleContext.Provider value={{ role, currentUser, isAuthenticated, users, login, logout, updateUserRole, addUser }}>
       {children}
     </RoleContext.Provider>
   );
