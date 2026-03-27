@@ -1,8 +1,28 @@
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 
 export default function SettingsPage() {
+  const [settings, setSettings] = useState({
+    orgName: 'Empresa Tech Ltda',
+    reportTime: '18:00',
+    timezone: 'America/Sao_Paulo',
+    webhook: '',
+  });
+
+  useEffect(() => {
+    const saved = localStorage.getItem('itribos_settings');
+    if (saved) {
+      try {
+        setSettings(JSON.parse(saved));
+      } catch (e) {
+        console.error('Failed to parse settings', e);
+      }
+    }
+  }, []);
+
   const handleSave = () => {
+    localStorage.setItem('itribos_settings', JSON.stringify(settings));
     toast.success('Configurações salvas com sucesso!');
   };
 
@@ -23,7 +43,11 @@ export default function SettingsPage() {
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
             <div>
               <label className={labelClass}>Nome</label>
-              <input defaultValue="Empresa Tech Ltda" className={inputClass} />
+              <input 
+                value={settings.orgName} 
+                onChange={e => setSettings({ ...settings, orgName: e.target.value })}
+                className={inputClass} 
+              />
             </div>
             <div>
               <label className={labelClass}>Slug</label>
@@ -38,19 +62,33 @@ export default function SettingsPage() {
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
             <div>
               <label className={labelClass}>Horário</label>
-              <input type="time" defaultValue="18:00" className={inputClass} />
+              <input 
+                type="time" 
+                value={settings.reportTime} 
+                onChange={e => setSettings({ ...settings, reportTime: e.target.value })}
+                className={inputClass} 
+              />
             </div>
             <div>
               <label className={labelClass}>Fuso Horário</label>
-              <select defaultValue="America/Sao_Paulo" className={inputClass}>
-                <option>America/Sao_Paulo</option>
-                <option>America/New_York</option>
-                <option>Europe/London</option>
+              <select 
+                value={settings.timezone} 
+                onChange={e => setSettings({ ...settings, timezone: e.target.value })}
+                className={inputClass}
+              >
+                <option value="America/Sao_Paulo">America/Sao_Paulo</option>
+                <option value="America/New_York">America/New_York</option>
+                <option value="Europe/London">Europe/London</option>
               </select>
             </div>
             <div>
               <label className={labelClass}>Webhook (Slack/Teams)</label>
-              <input placeholder="https://hooks.slack.com/..." className={inputClass} />
+              <input 
+                placeholder="https://hooks.slack.com/..." 
+                value={settings.webhook}
+                onChange={e => setSettings({ ...settings, webhook: e.target.value })}
+                className={inputClass} 
+              />
             </div>
           </div>
         </div>
