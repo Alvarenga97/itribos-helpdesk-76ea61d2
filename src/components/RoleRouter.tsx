@@ -3,7 +3,7 @@ import Index from '@/pages/Index';
 import TicketList from '@/pages/TicketList';
 import Reports from '@/pages/Reports';
 import Settings from '@/pages/Settings';
-import UsersPage from '@/pages/Users';
+import UsersPage from '@/pages/UserManagement';
 import RequesterHome from '@/pages/requester/RequesterHome';
 import { Navigate } from 'react-router-dom';
 
