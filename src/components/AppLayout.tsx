@@ -2,8 +2,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Ticket, Plus, BarChart3, Settings,
-  ChevronLeft, ChevronRight, Bell, Search, Menu, LogOut, Users, X
+  ChevronLeft, ChevronRight, Bell, Search, Menu, LogOut, Users, X, Sun, Moon
 } from 'lucide-react';
+import { useTheme } from '@/hooks/useTheme';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useIsMobile } from '@/hooks/use-mobile';
