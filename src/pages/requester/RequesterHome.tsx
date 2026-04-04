@@ -3,8 +3,8 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Plus, Ticket, Clock, CheckCircle2, Star } from 'lucide-react';
 import { StatusBadge, PriorityBadge } from '@/components/TicketBadges';
-import { mockTickets } from '@/data/mock';
-import { useRole } from '@/contexts/RoleContext';
+import { useTickets } from '@/hooks/useTickets';
+import { useAuth } from '@/contexts/AuthContext';
 import type { TicketStatus } from '@/types/ticket';
 import { cn } from '@/lib/utils';
 
@@ -21,14 +21,14 @@ const item = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } };
 
 export default function RequesterHome() {
   const [statusFilter, setStatusFilter] = useState<TicketStatus | 'ALL'>('ALL');
-  const { currentUser } = useRole();
+  const { profile } = useAuth();
+  const { data: allTickets = [], isLoading } = useTickets(statusFilter);
 
-  // Requester sees only their tickets (mock: filter by requester id)
-  const myTickets = mockTickets.filter(t => t.requester.id === currentUser.id);
-  const filtered = statusFilter === 'ALL' ? myTickets : myTickets.filter(t => t.status === statusFilter);
+  // RLS already filters to only user's tickets for requesters
+  const tickets = allTickets;
 
-  const openCount = myTickets.filter(t => t.status === 'OPEN' || t.status === 'IN_PROGRESS' || t.status === 'WAITING_REQUESTER').length;
-  const resolvedCount = myTickets.filter(t => t.status === 'RESOLVED' || t.status === 'CLOSED').length;
+  const openCount = allTickets.filter(t => t.status === 'OPEN' || t.status === 'IN_PROGRESS' || t.status === 'WAITING_REQUESTER').length;
+  const resolvedCount = allTickets.filter(t => t.status === 'RESOLVED' || t.status === 'CLOSED').length;
 
   return (
     <div className="space-y-6">
@@ -36,7 +36,7 @@ export default function RequesterHome() {
         <div>
           <h1 className="text-xl sm:text-2xl font-bold font-display text-foreground">Meus Chamados</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Olá, {currentUser.name.split(' ')[0]}! Acompanhe seus chamados de suporte.
+            Olá, {profile?.name?.split(' ')[0] || 'Usuário'}! Acompanhe seus chamados de suporte.
           </p>
         </div>
         <Link
@@ -48,11 +48,10 @@ export default function RequesterHome() {
         </Link>
       </div>
 
-      {/* Quick stats */}
       <motion.div variants={container} initial="hidden" animate="show" className="grid grid-cols-3 gap-3">
         <motion.div variants={item} className="rounded-lg border border-border card-gradient p-4 text-center">
           <Ticket className="mx-auto h-5 w-5 text-primary" />
-          <p className="mt-2 text-2xl font-bold font-display text-foreground">{myTickets.length}</p>
+          <p className="mt-2 text-2xl font-bold font-display text-foreground">{allTickets.length}</p>
           <p className="text-xs text-muted-foreground">Total</p>
         </motion.div>
         <motion.div variants={item} className="rounded-lg border border-border card-gradient p-4 text-center">
@@ -67,7 +66,6 @@ export default function RequesterHome() {
         </motion.div>
       </motion.div>
 
-      {/* Filter */}
       <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0 sm:flex-wrap">
         {statusFilters.map((f) => (
           <button
@@ -85,8 +83,11 @@ export default function RequesterHome() {
         ))}
       </div>
 
-      {/* Ticket list */}
-      {filtered.length === 0 ? (
+      {isLoading ? (
+        <div className="rounded-lg border border-border card-gradient p-8 text-center">
+          <p className="text-sm text-muted-foreground">Carregando chamados...</p>
+        </div>
+      ) : tickets.length === 0 ? (
         <div className="rounded-lg border border-border card-gradient p-8 text-center">
           <Ticket className="mx-auto h-8 w-8 text-muted-foreground" />
           <p className="mt-3 text-sm font-medium text-foreground">Nenhum chamado encontrado</p>
@@ -100,7 +101,7 @@ export default function RequesterHome() {
         </div>
       ) : (
         <div className="space-y-3">
-          {filtered.map((ticket, i) => (
+          {tickets.map((ticket, i) => (
             <motion.div
               key={ticket.id}
               initial={{ opacity: 0, y: 8 }}
@@ -114,7 +115,7 @@ export default function RequesterHome() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="font-mono text-xs text-muted-foreground">#{ticket.ticketNumber}</span>
+                      <span className="font-mono text-xs text-muted-foreground">#{ticket.ticket_number}</span>
                       <PriorityBadge priority={ticket.priority} />
                     </div>
                     <p className="mt-1.5 text-sm font-medium text-foreground">{ticket.title}</p>
@@ -124,24 +125,18 @@ export default function RequesterHome() {
                 </div>
                 <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
                   <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1.5">
-                      <div className="h-2 w-2 rounded-full" style={{ backgroundColor: ticket.category.color }} />
-                      <span>{ticket.category.name}</span>
-                    </div>
-                    {ticket.assignee && (
-                      <span>Analista: {ticket.assignee.name}</span>
+                    {ticket.category && (
+                      <div className="flex items-center gap-1.5">
+                        <div className="h-2 w-2 rounded-full" style={{ backgroundColor: ticket.category.color }} />
+                        <span>{ticket.category.name}</span>
+                      </div>
+                    )}
+                    {ticket.assignee_profile && (
+                      <span>Analista: {ticket.assignee_profile.name}</span>
                     )}
                   </div>
-                  <span>{new Date(ticket.createdAt).toLocaleDateString('pt-BR')}</span>
+                  <span>{new Date(ticket.created_at).toLocaleDateString('pt-BR')}</span>
                 </div>
-                {ticket.csatScore && (
-                  <div className="mt-2 flex items-center gap-1">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <Star key={i} className={cn('h-3 w-3', i < ticket.csatScore! ? 'fill-warning text-warning' : 'text-border')} />
-                    ))}
-                    <span className="ml-1 text-xs text-muted-foreground">Sua avaliação</span>
-                  </div>
-                )}
               </Link>
             </motion.div>
           ))}

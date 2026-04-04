@@ -3,8 +3,9 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { RoleProvider } from "@/contexts/RoleContext";
+import { AuthProvider } from "@/contexts/AuthContext";
 import AppLayout from "@/components/AppLayout";
+import ProtectedRoute from "@/components/ProtectedRoute";
 import RoleRouter from "@/components/RoleRouter";
 import TicketDetail from "./pages/TicketDetail";
 import NewTicket from "./pages/NewTicket";
@@ -18,20 +19,20 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <RoleProvider>
+      <AuthProvider>
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<Login />} />
-            <Route path="/" element={<AppLayout><RoleRouter page="home" /></AppLayout>} />
-            <Route path="/tickets" element={<AppLayout><RoleRouter page="tickets" /></AppLayout>} />
-            <Route path="/tickets/new" element={<AppLayout><NewTicket /></AppLayout>} />
-            <Route path="/tickets/:id" element={<AppLayout><TicketDetail /></AppLayout>} />
-            <Route path="/reports" element={<AppLayout><RoleRouter page="reports" /></AppLayout>} />
-            <Route path="/settings" element={<AppLayout><RoleRouter page="settings" /></AppLayout>} />
+            <Route path="/" element={<ProtectedRoute><AppLayout><RoleRouter page="home" /></AppLayout></ProtectedRoute>} />
+            <Route path="/tickets" element={<ProtectedRoute><AppLayout><RoleRouter page="tickets" /></AppLayout></ProtectedRoute>} />
+            <Route path="/tickets/new" element={<ProtectedRoute><AppLayout><NewTicket /></AppLayout></ProtectedRoute>} />
+            <Route path="/tickets/:id" element={<ProtectedRoute><AppLayout><TicketDetail /></AppLayout></ProtectedRoute>} />
+            <Route path="/reports" element={<ProtectedRoute><AppLayout><RoleRouter page="reports" /></AppLayout></ProtectedRoute>} />
+            <Route path="/settings" element={<ProtectedRoute><AppLayout><RoleRouter page="settings" /></AppLayout></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
-      </RoleProvider>
+      </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );

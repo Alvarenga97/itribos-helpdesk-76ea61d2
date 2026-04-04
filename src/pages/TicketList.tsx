@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { StatusBadge, PriorityBadge } from '@/components/TicketBadges';
-import { mockTickets } from '@/data/mock';
+import { useTickets } from '@/hooks/useTickets';
 import type { TicketStatus } from '@/types/ticket';
 import { cn } from '@/lib/utils';
 
@@ -17,17 +17,14 @@ const statusFilters: { value: TicketStatus | 'ALL'; label: string }[] = [
 
 export default function TicketList() {
   const [statusFilter, setStatusFilter] = useState<TicketStatus | 'ALL'>('ALL');
-
-  const filtered = statusFilter === 'ALL'
-    ? mockTickets
-    : mockTickets.filter(t => t.status === statusFilter);
+  const { data: tickets = [], isLoading } = useTickets(statusFilter);
 
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold font-display text-foreground">Chamados</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{mockTickets.length} chamados no total</p>
+          <p className="mt-1 text-sm text-muted-foreground">{tickets.length} chamados</p>
         </div>
         <Link
           to="/tickets/new"
@@ -37,7 +34,6 @@ export default function TicketList() {
         </Link>
       </div>
 
-      {/* Filters */}
       <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0 sm:flex-wrap">
         {statusFilters.map((f) => (
           <button
@@ -55,108 +51,122 @@ export default function TicketList() {
         ))}
       </div>
 
-      {/* Mobile: Card layout */}
-      <div className="space-y-3 sm:hidden">
-        {filtered.map((ticket, i) => (
-          <motion.div
-            key={ticket.id}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: i * 0.03 }}
-          >
-            <Link
-              to={`/tickets/${ticket.id}`}
-              className="block rounded-lg border border-border card-gradient p-4 transition-colors hover:bg-secondary/40"
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs text-muted-foreground">#{ticket.ticketNumber}</span>
-                    <PriorityBadge priority={ticket.priority} />
-                  </div>
-                  <p className="mt-1.5 text-sm font-medium text-foreground truncate">{ticket.title}</p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">{ticket.requester.name}</p>
-                </div>
-                <StatusBadge status={ticket.status} />
-              </div>
-              <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
-                <div className="flex items-center gap-2">
-                  <div className="h-2 w-2 rounded-full" style={{ backgroundColor: ticket.category.color }} />
-                  <span>{ticket.category.name}</span>
-                </div>
-                <span>
-                  {new Date(ticket.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
-                </span>
-              </div>
-            </Link>
-          </motion.div>
-        ))}
-      </div>
-
-      {/* Desktop: Table layout */}
-      <div className="hidden sm:block rounded-lg border border-border card-gradient overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-border">
-                <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">#</th>
-                <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Título</th>
-                <th className="hidden px-5 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground md:table-cell">Categoria</th>
-                <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Prioridade</th>
-                <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Status</th>
-                <th className="hidden px-5 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground lg:table-cell">Atribuído</th>
-                <th className="hidden px-5 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground sm:table-cell">Criado</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {filtered.map((ticket, i) => (
-                <motion.tr
-                  key={ticket.id}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: i * 0.03 }}
-                  className="group transition-colors hover:bg-secondary/40"
-                >
-                  <td className="px-5 py-3.5">
-                    <span className="font-mono text-xs text-muted-foreground">{ticket.ticketNumber}</span>
-                  </td>
-                  <td className="px-5 py-3.5">
-                    <Link to={`/tickets/${ticket.id}`} className="text-sm font-medium text-foreground hover:text-primary transition-colors">
-                      {ticket.title}
-                    </Link>
-                    <p className="mt-0.5 text-xs text-muted-foreground">{ticket.requester.name}</p>
-                  </td>
-                  <td className="hidden px-5 py-3.5 md:table-cell">
-                    <div className="flex items-center gap-2">
-                      <div className="h-2 w-2 rounded-full" style={{ backgroundColor: ticket.category.color }} />
-                      <span className="text-xs text-muted-foreground">{ticket.category.name}</span>
-                    </div>
-                  </td>
-                  <td className="px-5 py-3.5"><PriorityBadge priority={ticket.priority} /></td>
-                  <td className="px-5 py-3.5"><StatusBadge status={ticket.status} /></td>
-                  <td className="hidden px-5 py-3.5 lg:table-cell">
-                    {ticket.assignee ? (
-                      <div className="flex items-center gap-2">
-                        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/20 text-[10px] font-medium text-primary">
-                          {ticket.assignee.name.split(' ').map(n => n[0]).join('')}
-                        </div>
-                        <span className="text-xs text-muted-foreground">{ticket.assignee.name}</span>
-                      </div>
-                    ) : (
-                      <span className="text-xs text-muted-foreground italic">Não atribuído</span>
-                    )}
-                  </td>
-                  <td className="hidden px-5 py-3.5 sm:table-cell">
-                    <span className="text-xs text-muted-foreground">
-                      {new Date(ticket.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                  </td>
-                </motion.tr>
-              ))}
-            </tbody>
-          </table>
+      {isLoading ? (
+        <div className="rounded-lg border border-border card-gradient p-8 text-center">
+          <p className="text-sm text-muted-foreground">Carregando chamados...</p>
         </div>
-      </div>
+      ) : (
+        <>
+          {/* Mobile: Card layout */}
+          <div className="space-y-3 sm:hidden">
+            {tickets.map((ticket, i) => (
+              <motion.div
+                key={ticket.id}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: i * 0.03 }}
+              >
+                <Link
+                  to={`/tickets/${ticket.id}`}
+                  className="block rounded-lg border border-border card-gradient p-4 transition-colors hover:bg-secondary/40"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-xs text-muted-foreground">#{ticket.ticket_number}</span>
+                        <PriorityBadge priority={ticket.priority} />
+                      </div>
+                      <p className="mt-1.5 text-sm font-medium text-foreground truncate">{ticket.title}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">{ticket.requester_profile?.name || 'Desconhecido'}</p>
+                    </div>
+                    <StatusBadge status={ticket.status} />
+                  </div>
+                  <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+                    <div className="flex items-center gap-2">
+                      {ticket.category && (
+                        <>
+                          <div className="h-2 w-2 rounded-full" style={{ backgroundColor: ticket.category.color }} />
+                          <span>{ticket.category.name}</span>
+                        </>
+                      )}
+                    </div>
+                    <span>
+                      {new Date(ticket.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                    </span>
+                  </div>
+                </Link>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Desktop: Table layout */}
+          <div className="hidden sm:block rounded-lg border border-border card-gradient overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">#</th>
+                    <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Título</th>
+                    <th className="hidden px-5 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground md:table-cell">Categoria</th>
+                    <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Prioridade</th>
+                    <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Status</th>
+                    <th className="hidden px-5 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground lg:table-cell">Atribuído</th>
+                    <th className="hidden px-5 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground sm:table-cell">Criado</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {tickets.map((ticket, i) => (
+                    <motion.tr
+                      key={ticket.id}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: i * 0.03 }}
+                      className="group transition-colors hover:bg-secondary/40"
+                    >
+                      <td className="px-5 py-3.5">
+                        <span className="font-mono text-xs text-muted-foreground">{ticket.ticket_number}</span>
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <Link to={`/tickets/${ticket.id}`} className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+                          {ticket.title}
+                        </Link>
+                        <p className="mt-0.5 text-xs text-muted-foreground">{ticket.requester_profile?.name || 'Desconhecido'}</p>
+                      </td>
+                      <td className="hidden px-5 py-3.5 md:table-cell">
+                        {ticket.category && (
+                          <div className="flex items-center gap-2">
+                            <div className="h-2 w-2 rounded-full" style={{ backgroundColor: ticket.category.color }} />
+                            <span className="text-xs text-muted-foreground">{ticket.category.name}</span>
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-5 py-3.5"><PriorityBadge priority={ticket.priority} /></td>
+                      <td className="px-5 py-3.5"><StatusBadge status={ticket.status} /></td>
+                      <td className="hidden px-5 py-3.5 lg:table-cell">
+                        {ticket.assignee_profile ? (
+                          <div className="flex items-center gap-2">
+                            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/20 text-[10px] font-medium text-primary">
+                              {ticket.assignee_profile.name.split(' ').map(n => n[0]).join('')}
+                            </div>
+                            <span className="text-xs text-muted-foreground">{ticket.assignee_profile.name}</span>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground italic">Não atribuído</span>
+                        )}
+                      </td>
+                      <td className="hidden px-5 py-3.5 sm:table-cell">
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(ticket.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </td>
+                    </motion.tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

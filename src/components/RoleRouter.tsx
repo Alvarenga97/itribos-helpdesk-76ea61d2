@@ -1,4 +1,4 @@
-import { useRole } from '@/contexts/RoleContext';
+import { useAuth } from '@/contexts/AuthContext';
 import Index from '@/pages/Index';
 import TicketList from '@/pages/TicketList';
 import Reports from '@/pages/Reports';
@@ -11,7 +11,7 @@ interface Props {
 }
 
 export default function RoleRouter({ page }: Props) {
-  const { role } = useRole();
+  const { role } = useAuth();
   const isRequester = role === 'REQUESTER';
 
   switch (page) {

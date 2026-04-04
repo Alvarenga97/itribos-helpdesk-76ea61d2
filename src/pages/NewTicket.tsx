@@ -2,16 +2,29 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Upload } from 'lucide-react';
-import { mockCategories } from '@/data/mock';
+import { useCategories, useCreateTicket } from '@/hooks/useTickets';
+import { toast } from 'sonner';
 
 export default function NewTicket() {
   const navigate = useNavigate();
+  const { data: categories = [] } = useCategories();
+  const createTicket = useCreateTicket();
   const [form, setForm] = useState({ title: '', description: '', categoryId: '', priority: 'MEDIUM' });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Mock submit
-    navigate('/tickets');
+    try {
+      await createTicket.mutateAsync({
+        title: form.title,
+        description: form.description,
+        category_id: form.categoryId,
+        priority: form.priority,
+      });
+      toast.success('Chamado criado com sucesso!');
+      navigate('/tickets');
+    } catch {
+      toast.error('Erro ao criar chamado. Tente novamente.');
+    }
   };
 
   const inputClass = 'w-full rounded-md border border-border bg-secondary px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring';
@@ -62,7 +75,7 @@ export default function NewTicket() {
                   className={inputClass}
                 >
                   <option value="">Selecionar...</option>
-                  {mockCategories.map(c => (
+                  {categories.map(c => (
                     <option key={c.id} value={c.id}>{c.name}</option>
                   ))}
                 </select>
@@ -105,9 +118,10 @@ export default function NewTicket() {
             </button>
             <button
               type="submit"
-              className="rounded-md bg-primary px-6 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+              disabled={createTicket.isPending}
+              className="rounded-md bg-primary px-6 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
             >
-              Abrir Chamado
+              {createTicket.isPending ? 'Criando...' : 'Abrir Chamado'}
             </button>
           </div>
         </form>
