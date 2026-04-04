@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Clock, User, MessageSquare, Star, Lock } from 'lucide-react';
+import { ArrowLeft, Clock, User, MessageSquare, Lock, Sparkles } from 'lucide-react';
 import { StatusBadge, PriorityBadge } from '@/components/TicketBadges';
 import { useTicket, useTicketComments, useAddComment, useUpdateTicketStatus } from '@/hooks/useTickets';
 import { useAuth } from '@/contexts/AuthContext';
 import CsatFeedbackForm from '@/components/CsatFeedbackForm';
+import { useStarSummary, useGenerateStarSummary } from '@/hooks/useStarSummary';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -15,8 +16,10 @@ export default function TicketDetail() {
   const isRequester = role === 'REQUESTER';
   const { data: ticket, isLoading } = useTicket(id);
   const { data: comments = [] } = useTicketComments(id);
+  const { data: starSummary } = useStarSummary(id);
   const addComment = useAddComment();
   const updateStatus = useUpdateTicketStatus();
+  const generateStar = useGenerateStarSummary();
   const [commentText, setCommentText] = useState('');
   const [isInternal, setIsInternal] = useState(false);
 
@@ -39,11 +42,7 @@ export default function TicketDetail() {
   const handleSendComment = async () => {
     if (!commentText.trim()) return;
     try {
-      await addComment.mutateAsync({
-        ticket_id: ticket.id,
-        content: commentText.trim(),
-        is_internal: isInternal,
-      });
+      await addComment.mutateAsync({ ticket_id: ticket.id, content: commentText.trim(), is_internal: isInternal });
       setCommentText('');
       setIsInternal(false);
       toast.success('Comentário enviado');
@@ -56,10 +55,19 @@ export default function TicketDetail() {
     try {
       await updateStatus.mutateAsync({ id: ticket.id, status: 'RESOLVED' });
       toast.success('Chamado resolvido');
+      // Trigger STAR generation
+      generateStar.mutate(ticket.id);
     } catch {
       toast.error('Erro ao resolver chamado');
     }
   };
+
+  const starFields = starSummary ? [
+    { label: 'Situação', value: starSummary.situation, color: 'border-l-primary' },
+    { label: 'Tarefa', value: starSummary.task, color: 'border-l-warning' },
+    { label: 'Ação', value: starSummary.action, color: 'border-l-info' },
+    { label: 'Resultado', value: starSummary.result, color: 'border-l-success' },
+  ] : [];
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -75,24 +83,23 @@ export default function TicketDetail() {
             <StatusBadge status={ticket.status} />
             <PriorityBadge priority={ticket.priority} />
             {ticket.sla_breached && !isRequester && (
-              <span className="inline-flex items-center gap-1 rounded-full border border-destructive/30 bg-destructive/15 px-2.5 py-0.5 text-xs font-medium text-destructive">
+              <span className="inline-flex items-center gap-1 rounded-full border border-destructive/30 bg-destructive/10 px-2.5 py-0.5 text-xs font-medium text-destructive">
                 SLA Violado
               </span>
             )}
           </div>
           <h1 className="text-lg sm:text-xl font-bold font-display text-foreground">{ticket.title}</h1>
-          
+
           {!isRequester && ticket.status !== 'CLOSED' && ticket.status !== 'RESOLVED' && (
             <button
               onClick={handleResolve}
               disabled={updateStatus.isPending}
-              className="self-start rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+              className="self-start rounded-lg bg-success px-4 py-2 text-sm font-medium text-success-foreground hover:bg-success/90 transition-colors disabled:opacity-50"
             >
               {updateStatus.isPending ? 'Resolvendo...' : 'Resolver Chamado'}
             </button>
           )}
 
-          {/* CSAT Feedback for requester on resolved tickets */}
           {isRequester && isTicketOwner && ticket.status === 'RESOLVED' && (
             <CsatFeedbackForm ticketId={ticket.id} />
           )}
@@ -101,7 +108,7 @@ export default function TicketDetail() {
         <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
           {/* Sidebar info */}
           <div className="order-first lg:order-last space-y-4">
-            <div className="rounded-lg border border-border card-gradient p-4 sm:p-5">
+            <div className="rounded-xl border border-border bg-card p-4 sm:p-5 shadow-sm">
               <h3 className="text-sm font-semibold font-display text-foreground">Detalhes</h3>
               <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-1 sm:gap-3">
                 {!isRequester && (
@@ -159,13 +166,13 @@ export default function TicketDetail() {
           {/* Main content */}
           <div className="lg:col-span-2 space-y-4 sm:space-y-6">
             {/* Description */}
-            <div className="rounded-lg border border-border card-gradient p-4 sm:p-5">
+            <div className="rounded-xl border border-border bg-card p-4 sm:p-5 shadow-sm">
               <h3 className="text-sm font-semibold font-display text-foreground">Descrição</h3>
               <p className="mt-3 text-sm leading-relaxed text-secondary-foreground">{ticket.description}</p>
               {ticket.tags && ticket.tags.length > 0 && (
                 <div className="mt-4 flex flex-wrap gap-2">
                   {ticket.tags.map(tag => (
-                    <span key={tag} className="rounded-md border border-border bg-secondary px-2 py-0.5 text-xs text-muted-foreground">
+                    <span key={tag} className="rounded-lg border border-border bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                       {tag}
                     </span>
                   ))}
@@ -173,8 +180,33 @@ export default function TicketDetail() {
               )}
             </div>
 
+            {/* STAR Summary */}
+            {starSummary && (
+              <div className="rounded-xl border border-border bg-card p-4 sm:p-5 shadow-sm">
+                <h3 className="text-sm font-semibold font-display text-foreground flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  Resumo STAR
+                </h3>
+                <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {starFields.map(f => (
+                    <div key={f.label} className={cn('rounded-lg border border-border bg-muted/50 p-3 border-l-4', f.color)}>
+                      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{f.label}</p>
+                      <p className="mt-1.5 text-sm text-foreground leading-relaxed">{f.value}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {generateStar.isPending && (
+              <div className="rounded-xl border border-border bg-card p-4 shadow-sm text-center">
+                <Sparkles className="mx-auto h-5 w-5 text-primary animate-pulse" />
+                <p className="mt-2 text-sm text-muted-foreground">Gerando resumo STAR com IA...</p>
+              </div>
+            )}
+
             {/* Comments */}
-            <div className="rounded-lg border border-border card-gradient p-4 sm:p-5">
+            <div className="rounded-xl border border-border bg-card p-4 sm:p-5 shadow-sm">
               <h3 className="text-sm font-semibold font-display text-foreground">
                 <MessageSquare className="mr-2 inline h-4 w-4" />
                 Comentários ({comments.length})
@@ -182,9 +214,9 @@ export default function TicketDetail() {
               {comments.length > 0 ? (
                 <div className="mt-4 space-y-3">
                   {comments.map((comment: any) => (
-                    <div key={comment.id} className={cn('rounded-md border p-3 sm:p-4', comment.is_internal ? 'border-warning/20 bg-warning/5' : 'border-border bg-secondary/50')}>
+                    <div key={comment.id} className={cn('rounded-lg border p-3 sm:p-4', comment.is_internal ? 'border-warning/30 bg-warning/5' : 'border-border bg-muted/50')}>
                       <div className="flex flex-wrap items-center gap-2">
-                        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/20 text-[10px] font-medium text-primary">
+                        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-[10px] font-medium text-primary">
                           {comment.author?.name?.split(' ').map((n: string) => n[0]).join('') || '?'}
                         </div>
                         <span className="text-xs font-medium text-foreground">{comment.author?.name || 'Desconhecido'}</span>
@@ -205,33 +237,25 @@ export default function TicketDetail() {
                 <p className="mt-4 text-sm text-muted-foreground">Nenhum comentário ainda.</p>
               )}
 
-              {/* Add comment */}
               <div className="mt-4 space-y-3">
                 <textarea
                   value={commentText}
                   onChange={(e) => setCommentText(e.target.value)}
                   placeholder={isRequester ? 'Enviar uma mensagem...' : 'Adicionar comentário...'}
-                  className="w-full rounded-md border border-border bg-secondary p-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-none"
+                  className="w-full rounded-lg border border-border bg-background p-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/20 resize-none"
                   rows={3}
                 />
                 <div className="flex items-center justify-between">
                   {!isRequester ? (
                     <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <input
-                        type="checkbox"
-                        checked={isInternal}
-                        onChange={(e) => setIsInternal(e.target.checked)}
-                        className="rounded border-border"
-                      />
+                      <input type="checkbox" checked={isInternal} onChange={(e) => setIsInternal(e.target.checked)} className="rounded border-border" />
                       <Lock className="h-3 w-3" /> Nota interna
                     </label>
-                  ) : (
-                    <span />
-                  )}
+                  ) : <span />}
                   <button
                     onClick={handleSendComment}
                     disabled={addComment.isPending || !commentText.trim()}
-                    className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                    className="rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                   >
                     {addComment.isPending ? 'Enviando...' : 'Enviar'}
                   </button>

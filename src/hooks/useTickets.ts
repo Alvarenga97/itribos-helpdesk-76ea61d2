@@ -136,7 +136,7 @@ export function useCreateTicket() {
         .insert({
           title: ticket.title,
           description: ticket.description,
-          category_id: ticket.category_id,
+          category_id: ticket.category_id || null,
           priority: ticket.priority as TicketPriority,
           created_by: user!.id,
         })

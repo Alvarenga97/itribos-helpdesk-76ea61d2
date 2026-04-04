@@ -27,6 +27,7 @@ const App = () => (
             <Route path="/tickets" element={<ProtectedRoute><AppLayout><RoleRouter page="tickets" /></AppLayout></ProtectedRoute>} />
             <Route path="/tickets/new" element={<ProtectedRoute><AppLayout><NewTicket /></AppLayout></ProtectedRoute>} />
             <Route path="/tickets/:id" element={<ProtectedRoute><AppLayout><TicketDetail /></AppLayout></ProtectedRoute>} />
+            <Route path="/users" element={<ProtectedRoute><AppLayout><RoleRouter page="users" /></AppLayout></ProtectedRoute>} />
             <Route path="/reports" element={<ProtectedRoute><AppLayout><RoleRouter page="reports" /></AppLayout></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><AppLayout><RoleRouter page="settings" /></AppLayout></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />

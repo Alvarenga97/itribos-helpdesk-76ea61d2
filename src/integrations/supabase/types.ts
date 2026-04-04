@@ -97,6 +97,44 @@ export type Database = {
         }
         Relationships: []
       }
+      star_summaries: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          result: string
+          situation: string
+          task: string
+          ticket_id: string
+        }
+        Insert: {
+          action?: string
+          created_at?: string
+          id?: string
+          result?: string
+          situation?: string
+          task?: string
+          ticket_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          result?: string
+          situation?: string
+          task?: string
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "star_summaries_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: true
+            referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ticket_comments: {
         Row: {
           content: string

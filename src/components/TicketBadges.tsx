@@ -2,18 +2,18 @@ import type { TicketStatus, TicketPriority } from '@/types/ticket';
 import { cn } from '@/lib/utils';
 
 const statusConfig: Record<TicketStatus, { label: string; className: string }> = {
-  OPEN: { label: 'Aberto', className: 'bg-info/15 text-info border-info/30' },
-  IN_PROGRESS: { label: 'Em Andamento', className: 'bg-warning/15 text-warning border-warning/30' },
+  OPEN: { label: 'Aberto', className: 'bg-primary/10 text-primary border-primary/20' },
+  IN_PROGRESS: { label: 'Em Andamento', className: 'bg-warning/10 text-warning border-warning/20' },
   WAITING_REQUESTER: { label: 'Aguardando', className: 'bg-muted text-muted-foreground border-border' },
-  RESOLVED: { label: 'Resolvido', className: 'bg-success/15 text-success border-success/30' },
+  RESOLVED: { label: 'Resolvido', className: 'bg-success/10 text-success border-success/20' },
   CLOSED: { label: 'Fechado', className: 'bg-secondary text-secondary-foreground border-border' },
 };
 
 const priorityConfig: Record<TicketPriority, { label: string; className: string }> = {
   LOW: { label: 'Baixa', className: 'bg-secondary text-secondary-foreground border-border' },
-  MEDIUM: { label: 'Média', className: 'bg-info/15 text-info border-info/30' },
-  HIGH: { label: 'Alta', className: 'bg-warning/15 text-warning border-warning/30' },
-  CRITICAL: { label: 'Crítica', className: 'bg-destructive/15 text-destructive border-destructive/30' },
+  MEDIUM: { label: 'Média', className: 'bg-primary/10 text-primary border-primary/20' },
+  HIGH: { label: 'Alta', className: 'bg-warning/10 text-warning border-warning/20' },
+  CRITICAL: { label: 'Crítica', className: 'bg-destructive/10 text-destructive border-destructive/20' },
 };
 
 export function StatusBadge({ status }: { status: TicketStatus }) {
