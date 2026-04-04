@@ -28,7 +28,7 @@ export default function TicketList() {
         </div>
         <Link
           to="/tickets/new"
-          className="inline-flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+          className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
         >
           + Novo Chamado
         </Link>
@@ -40,10 +40,10 @@ export default function TicketList() {
             key={f.value}
             onClick={() => setStatusFilter(f.value)}
             className={cn(
-              'shrink-0 rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
+              'shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
               statusFilter === f.value
-                ? 'bg-primary/15 text-primary border border-primary/30'
-                : 'bg-secondary text-secondary-foreground border border-border hover:bg-secondary/80'
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-card text-secondary-foreground border border-border hover:bg-muted'
             )}
           >
             {f.label}
@@ -52,23 +52,18 @@ export default function TicketList() {
       </div>
 
       {isLoading ? (
-        <div className="rounded-lg border border-border card-gradient p-8 text-center">
+        <div className="rounded-xl border border-border bg-card p-8 text-center shadow-sm">
           <p className="text-sm text-muted-foreground">Carregando chamados...</p>
         </div>
       ) : (
         <>
-          {/* Mobile: Card layout */}
+          {/* Mobile */}
           <div className="space-y-3 sm:hidden">
             {tickets.map((ticket, i) => (
-              <motion.div
-                key={ticket.id}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: i * 0.03 }}
-              >
+              <motion.div key={ticket.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.03 }}>
                 <Link
                   to={`/tickets/${ticket.id}`}
-                  className="block rounded-lg border border-border card-gradient p-4 transition-colors hover:bg-secondary/40"
+                  className="block rounded-xl border border-border bg-card p-4 shadow-sm transition-colors hover:bg-muted/50"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
@@ -81,89 +76,74 @@ export default function TicketList() {
                     </div>
                     <StatusBadge status={ticket.status} />
                   </div>
-                  <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
-                    <div className="flex items-center gap-2">
-                      {ticket.category && (
-                        <>
-                          <div className="h-2 w-2 rounded-full" style={{ backgroundColor: ticket.category.color }} />
-                          <span>{ticket.category.name}</span>
-                        </>
-                      )}
-                    </div>
-                    <span>
-                      {new Date(ticket.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
-                    </span>
-                  </div>
                 </Link>
               </motion.div>
             ))}
           </div>
 
-          {/* Desktop: Table layout */}
-          <div className="hidden sm:block rounded-lg border border-border card-gradient overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">#</th>
-                    <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Título</th>
-                    <th className="hidden px-5 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground md:table-cell">Categoria</th>
-                    <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Prioridade</th>
-                    <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Status</th>
-                    <th className="hidden px-5 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground lg:table-cell">Atribuído</th>
-                    <th className="hidden px-5 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground sm:table-cell">Criado</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {tickets.map((ticket, i) => (
-                    <motion.tr
-                      key={ticket.id}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: i * 0.03 }}
-                      className="group transition-colors hover:bg-secondary/40"
-                    >
-                      <td className="px-5 py-3.5">
-                        <span className="font-mono text-xs text-muted-foreground">{ticket.ticket_number}</span>
-                      </td>
-                      <td className="px-5 py-3.5">
-                        <Link to={`/tickets/${ticket.id}`} className="text-sm font-medium text-foreground hover:text-primary transition-colors">
-                          {ticket.title}
-                        </Link>
-                        <p className="mt-0.5 text-xs text-muted-foreground">{ticket.requester_profile?.name || 'Desconhecido'}</p>
-                      </td>
-                      <td className="hidden px-5 py-3.5 md:table-cell">
-                        {ticket.category && (
-                          <div className="flex items-center gap-2">
-                            <div className="h-2 w-2 rounded-full" style={{ backgroundColor: ticket.category.color }} />
-                            <span className="text-xs text-muted-foreground">{ticket.category.name}</span>
+          {/* Desktop */}
+          <div className="hidden sm:block rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">#</th>
+                  <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Título</th>
+                  <th className="hidden md:table-cell px-5 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Categoria</th>
+                  <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Prioridade</th>
+                  <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Status</th>
+                  <th className="hidden lg:table-cell px-5 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Atribuído</th>
+                  <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Criado</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {tickets.map((ticket, i) => (
+                  <motion.tr
+                    key={ticket.id}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: i * 0.03 }}
+                    className="group transition-colors hover:bg-muted/50"
+                  >
+                    <td className="px-5 py-3.5">
+                      <span className="font-mono text-xs text-muted-foreground">{ticket.ticket_number}</span>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <Link to={`/tickets/${ticket.id}`} className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+                        {ticket.title}
+                      </Link>
+                      <p className="mt-0.5 text-xs text-muted-foreground">{ticket.requester_profile?.name || 'Desconhecido'}</p>
+                    </td>
+                    <td className="hidden md:table-cell px-5 py-3.5">
+                      {ticket.category && (
+                        <div className="flex items-center gap-2">
+                          <div className="h-2 w-2 rounded-full" style={{ backgroundColor: ticket.category.color }} />
+                          <span className="text-xs text-muted-foreground">{ticket.category.name}</span>
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-5 py-3.5"><PriorityBadge priority={ticket.priority} /></td>
+                    <td className="px-5 py-3.5"><StatusBadge status={ticket.status} /></td>
+                    <td className="hidden lg:table-cell px-5 py-3.5">
+                      {ticket.assignee_profile ? (
+                        <div className="flex items-center gap-2">
+                          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-[10px] font-medium text-primary">
+                            {ticket.assignee_profile.name.split(' ').map(n => n[0]).join('')}
                           </div>
-                        )}
-                      </td>
-                      <td className="px-5 py-3.5"><PriorityBadge priority={ticket.priority} /></td>
-                      <td className="px-5 py-3.5"><StatusBadge status={ticket.status} /></td>
-                      <td className="hidden px-5 py-3.5 lg:table-cell">
-                        {ticket.assignee_profile ? (
-                          <div className="flex items-center gap-2">
-                            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/20 text-[10px] font-medium text-primary">
-                              {ticket.assignee_profile.name.split(' ').map(n => n[0]).join('')}
-                            </div>
-                            <span className="text-xs text-muted-foreground">{ticket.assignee_profile.name}</span>
-                          </div>
-                        ) : (
-                          <span className="text-xs text-muted-foreground italic">Não atribuído</span>
-                        )}
-                      </td>
-                      <td className="hidden px-5 py-3.5 sm:table-cell">
-                        <span className="text-xs text-muted-foreground">
-                          {new Date(ticket.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      </td>
-                    </motion.tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                          <span className="text-xs text-muted-foreground">{ticket.assignee_profile.name}</span>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-muted-foreground italic">Não atribuído</span>
+                      )}
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(ticket.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </td>
+                  </motion.tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </>
       )}

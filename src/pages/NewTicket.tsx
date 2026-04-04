@@ -1,15 +1,14 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Upload } from 'lucide-react';
-import { useCategories, useCreateTicket } from '@/hooks/useTickets';
+import { ArrowLeft } from 'lucide-react';
+import { useCreateTicket } from '@/hooks/useTickets';
 import { toast } from 'sonner';
 
 export default function NewTicket() {
   const navigate = useNavigate();
-  const { data: categories = [] } = useCategories();
   const createTicket = useCreateTicket();
-  const [form, setForm] = useState({ title: '', description: '', categoryId: '', priority: 'MEDIUM' });
+  const [form, setForm] = useState({ title: '', description: '', priority: 'MEDIUM' });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -17,7 +16,7 @@ export default function NewTicket() {
       await createTicket.mutateAsync({
         title: form.title,
         description: form.description,
-        category_id: form.categoryId,
+        category_id: '',
         priority: form.priority,
       });
       toast.success('Chamado criado com sucesso!');
@@ -27,8 +26,7 @@ export default function NewTicket() {
     }
   };
 
-  const inputClass = 'w-full rounded-md border border-border bg-secondary px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring';
-  const labelClass = 'block text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1.5';
+  const inputClass = 'w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/20';
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -38,12 +36,12 @@ export default function NewTicket() {
 
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
         <h1 className="text-2xl font-bold font-display text-foreground">Novo Chamado</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Preencha os dados para abrir um chamado de suporte.</p>
+        <p className="mt-1 text-sm text-muted-foreground">Descreva seu problema e abriremos um chamado imediatamente.</p>
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-5">
-          <div className="rounded-lg border border-border card-gradient p-6 space-y-5">
+          <div className="rounded-xl border border-border bg-card p-6 shadow-sm space-y-5">
             <div>
-              <label className={labelClass}>Título</label>
+              <label className="block text-sm font-medium text-foreground mb-1.5">Título</label>
               <input
                 required
                 placeholder="Descreva o problema em uma frase"
@@ -54,7 +52,7 @@ export default function NewTicket() {
             </div>
 
             <div>
-              <label className={labelClass}>Descrição</label>
+              <label className="block text-sm font-medium text-foreground mb-1.5">Descrição</label>
               <textarea
                 required
                 rows={5}
@@ -65,46 +63,18 @@ export default function NewTicket() {
               />
             </div>
 
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-              <div>
-                <label className={labelClass}>Categoria</label>
-                <select
-                  required
-                  value={form.categoryId}
-                  onChange={e => setForm({ ...form, categoryId: e.target.value })}
-                  className={inputClass}
-                >
-                  <option value="">Selecionar...</option>
-                  {categories.map(c => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className={labelClass}>Prioridade</label>
-                <select
-                  value={form.priority}
-                  onChange={e => setForm({ ...form, priority: e.target.value })}
-                  className={inputClass}
-                >
-                  <option value="LOW">Baixa</option>
-                  <option value="MEDIUM">Média</option>
-                  <option value="HIGH">Alta</option>
-                  <option value="CRITICAL">Crítica</option>
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label className={labelClass}>Anexos</label>
-              <div className="flex items-center justify-center rounded-md border-2 border-dashed border-border bg-secondary/50 py-8 transition-colors hover:border-primary/30 cursor-pointer">
-                <div className="text-center">
-                  <Upload className="mx-auto h-6 w-6 text-muted-foreground" />
-                  <p className="mt-2 text-sm text-muted-foreground">Arraste arquivos ou clique para selecionar</p>
-                  <p className="mt-1 text-xs text-muted-foreground">PDF, imagens, logs (máx. 10MB)</p>
-                </div>
-              </div>
+            <div className="max-w-xs">
+              <label className="block text-sm font-medium text-foreground mb-1.5">Prioridade</label>
+              <select
+                value={form.priority}
+                onChange={e => setForm({ ...form, priority: e.target.value })}
+                className={inputClass}
+              >
+                <option value="LOW">Baixa</option>
+                <option value="MEDIUM">Média</option>
+                <option value="HIGH">Alta</option>
+                <option value="CRITICAL">Crítica</option>
+              </select>
             </div>
           </div>
 
@@ -112,14 +82,14 @@ export default function NewTicket() {
             <button
               type="button"
               onClick={() => navigate(-1)}
-              className="rounded-md border border-border bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground hover:bg-secondary/80 transition-colors"
+              className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={createTicket.isPending}
-              className="rounded-md bg-primary px-6 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+              className="rounded-lg bg-primary px-6 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
             >
               {createTicket.isPending ? 'Criando...' : 'Abrir Chamado'}
             </button>

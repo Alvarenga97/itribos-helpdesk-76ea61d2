@@ -6,18 +6,19 @@ interface StatCardProps {
   value: string | number;
   subtitle?: string;
   icon: React.ReactNode;
+  color?: string;
   trend?: { value: number; label: string };
   className?: string;
 }
 
-export default function StatCard({ title, value, subtitle, icon, trend, className }: StatCardProps) {
+export default function StatCard({ title, value, subtitle, icon, color, trend, className }: StatCardProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
       className={cn(
-        'rounded-lg border border-border card-gradient p-4 sm:p-5',
+        'rounded-xl border border-border bg-card p-4 sm:p-5 shadow-sm',
         className
       )}
     >
@@ -32,7 +33,7 @@ export default function StatCard({ title, value, subtitle, icon, trend, classNam
             </p>
           )}
         </div>
-        <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-primary/10 text-primary shrink-0 ml-2">
+        <div className={cn('flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-xl bg-muted shrink-0 ml-2', color || 'text-primary')}>
           {icon}
         </div>
       </div>
