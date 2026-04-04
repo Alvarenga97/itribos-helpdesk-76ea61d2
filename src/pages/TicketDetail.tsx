@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Clock, User, MessageSquare, Lock, Sparkles } from 'lucide-react';
+import { ArrowLeft, Clock, User, MessageSquare, Lock, Sparkles, Trash2, UserCheck } from 'lucide-react';
 import { StatusBadge, PriorityBadge } from '@/components/TicketBadges';
-import { useTicket, useTicketComments, useAddComment, useUpdateTicketStatus } from '@/hooks/useTickets';
+import { useTicket, useTicketComments, useAddComment, useUpdateTicketStatus, useDeleteTicket, useAssignTicket } from '@/hooks/useTickets';
 import { useAuth } from '@/contexts/AuthContext';
 import CsatFeedbackForm from '@/components/CsatFeedbackForm';
 import { useStarSummary, useGenerateStarSummary } from '@/hooks/useStarSummary';
@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 
 export default function TicketDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { role, user } = useAuth();
   const isRequester = role === 'REQUESTER';
   const { data: ticket, isLoading } = useTicket(id);
@@ -19,9 +20,12 @@ export default function TicketDetail() {
   const { data: starSummary } = useStarSummary(id);
   const addComment = useAddComment();
   const updateStatus = useUpdateTicketStatus();
+  const deleteTicket = useDeleteTicket();
+  const assignTicket = useAssignTicket();
   const generateStar = useGenerateStarSummary();
   const [commentText, setCommentText] = useState('');
   const [isInternal, setIsInternal] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   if (isLoading) {
     return <div className="py-20 text-center text-muted-foreground">Carregando...</div>;
@@ -38,6 +42,8 @@ export default function TicketDetail() {
 
   const slaTime = ticket.sla_deadline ? new Date(ticket.sla_deadline) : null;
   const isTicketOwner = user?.id === ticket.created_by;
+  const isAssignedToMe = ticket.assigned_to === user?.id;
+  const isUnassigned = !ticket.assigned_to;
 
   const handleSendComment = async () => {
     if (!commentText.trim()) return;
@@ -55,10 +61,29 @@ export default function TicketDetail() {
     try {
       await updateStatus.mutateAsync({ id: ticket.id, status: 'RESOLVED' });
       toast.success('Chamado resolvido');
-      // Trigger STAR generation
       generateStar.mutate(ticket.id);
     } catch {
       toast.error('Erro ao resolver chamado');
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      await deleteTicket.mutateAsync(ticket.id);
+      toast.success('Chamado excluído');
+      navigate('/tickets');
+    } catch {
+      toast.error('Erro ao excluir chamado');
+    }
+  };
+
+  const handleAssignToMe = async () => {
+    if (!user) return;
+    try {
+      await assignTicket.mutateAsync({ id: ticket.id, userId: user.id });
+      toast.success('Chamado atribuído a você');
+    } catch {
+      toast.error('Erro ao atribuir chamado');
     }
   };
 
@@ -90,15 +115,62 @@ export default function TicketDetail() {
           </div>
           <h1 className="text-lg sm:text-xl font-bold font-display text-foreground">{ticket.title}</h1>
 
-          {!isRequester && ticket.status !== 'CLOSED' && ticket.status !== 'RESOLVED' && (
-            <button
-              onClick={handleResolve}
-              disabled={updateStatus.isPending}
-              className="self-start rounded-lg bg-success px-4 py-2 text-sm font-medium text-success-foreground hover:bg-success/90 transition-colors disabled:opacity-50"
-            >
-              {updateStatus.isPending ? 'Resolvendo...' : 'Resolver Chamado'}
-            </button>
-          )}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Assign to me */}
+            {!isRequester && (isUnassigned || !isAssignedToMe) && ticket.status !== 'CLOSED' && (
+              <button
+                onClick={handleAssignToMe}
+                disabled={assignTicket.isPending}
+                className="inline-flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-4 py-2 text-sm font-medium text-primary hover:bg-primary/20 transition-colors disabled:opacity-50"
+              >
+                <UserCheck className="h-4 w-4" />
+                {assignTicket.isPending ? 'Atribuindo...' : 'Atribuir a mim'}
+              </button>
+            )}
+
+            {/* Resolve */}
+            {!isRequester && ticket.status !== 'CLOSED' && ticket.status !== 'RESOLVED' && (
+              <button
+                onClick={handleResolve}
+                disabled={updateStatus.isPending}
+                className="rounded-lg bg-success px-4 py-2 text-sm font-medium text-success-foreground hover:bg-success/90 transition-colors disabled:opacity-50"
+              >
+                {updateStatus.isPending ? 'Resolvendo...' : 'Resolver Chamado'}
+              </button>
+            )}
+
+            {/* Delete */}
+            {!isRequester && (
+              <>
+                {showDeleteConfirm ? (
+                  <div className="inline-flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2">
+                    <span className="text-xs text-destructive font-medium">Tem certeza?</span>
+                    <button
+                      onClick={handleDelete}
+                      disabled={deleteTicket.isPending}
+                      className="rounded bg-destructive px-3 py-1 text-xs font-medium text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50"
+                    >
+                      {deleteTicket.isPending ? 'Excluindo...' : 'Sim, excluir'}
+                    </button>
+                    <button
+                      onClick={() => setShowDeleteConfirm(false)}
+                      className="rounded border border-border px-3 py-1 text-xs font-medium text-foreground hover:bg-muted"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setShowDeleteConfirm(true)}
+                    className="inline-flex items-center gap-2 rounded-lg border border-destructive/30 px-4 py-2 text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Excluir
+                  </button>
+                )}
+              </>
+            )}
+          </div>
 
           {isRequester && isTicketOwner && ticket.status === 'RESOLVED' && (
             <CsatFeedbackForm ticketId={ticket.id} />
