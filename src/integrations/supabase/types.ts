@@ -97,6 +97,60 @@ export type Database = {
         }
         Relationships: []
       }
+      settings: {
+        Row: {
+          id: string
+          org_name: string
+          org_slug: string
+          report_time: string
+          report_timezone: string
+          sla_critical_resolution: string
+          sla_critical_response: string
+          sla_high_resolution: string
+          sla_high_response: string
+          sla_low_resolution: string
+          sla_low_response: string
+          sla_medium_resolution: string
+          sla_medium_response: string
+          updated_at: string
+          webhook_url: string
+        }
+        Insert: {
+          id?: string
+          org_name?: string
+          org_slug?: string
+          report_time?: string
+          report_timezone?: string
+          sla_critical_resolution?: string
+          sla_critical_response?: string
+          sla_high_resolution?: string
+          sla_high_response?: string
+          sla_low_resolution?: string
+          sla_low_response?: string
+          sla_medium_resolution?: string
+          sla_medium_response?: string
+          updated_at?: string
+          webhook_url?: string
+        }
+        Update: {
+          id?: string
+          org_name?: string
+          org_slug?: string
+          report_time?: string
+          report_timezone?: string
+          sla_critical_resolution?: string
+          sla_critical_response?: string
+          sla_high_resolution?: string
+          sla_high_response?: string
+          sla_low_resolution?: string
+          sla_low_response?: string
+          sla_medium_resolution?: string
+          sla_medium_response?: string
+          updated_at?: string
+          webhook_url?: string
+        }
+        Relationships: []
+      }
       star_summaries: {
         Row: {
           action: string
