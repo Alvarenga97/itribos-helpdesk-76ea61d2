@@ -3,13 +3,12 @@ import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, Ticket, Plus, BarChart3, Settings, 
-  ChevronLeft, ChevronRight, Bell, Search, Menu
+  ChevronLeft, ChevronRight, Bell, Search, Menu, LogOut
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useRole } from '@/contexts/RoleContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import RoleSwitcher from '@/components/RoleSwitcher';
 
 const analystNav = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
@@ -53,14 +52,23 @@ function NavItems({ items, onNavigate }: { items: typeof analystNav; onNavigate?
   );
 }
 
+const roleLabels: Record<string, string> = {
+  REQUESTER: 'Usuário',
+  AGENT: 'Analista',
+  MANAGER: 'Gestor',
+  ADMIN: 'Admin',
+};
+
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const isMobile = useIsMobile();
-  const { role, currentUser } = useRole();
+  const { role, profile, signOut } = useAuth();
   const location = useLocation();
 
   const navItems = role === 'REQUESTER' ? requesterNav : analystNav;
+  const displayName = profile?.name || 'Usuário';
+  const initials = displayName.split(' ').map(n => n[0]).join('').slice(0, 2);
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -156,11 +164,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   <div className="border-t border-border p-4">
                     <div className="flex items-center gap-3">
                       <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/20 text-xs font-medium text-primary">
-                        {currentUser.name.split(' ').map(n => n[0]).join('')}
+                        {initials}
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-foreground">{currentUser.name}</p>
-                        <p className="text-xs text-muted-foreground capitalize">{role === 'REQUESTER' ? 'Usuário' : role === 'MANAGER' ? 'Gestor' : 'Analista'}</p>
+                        <p className="text-sm font-medium text-foreground">{displayName}</p>
+                        <p className="text-xs text-muted-foreground">{roleLabels[role] || role}</p>
                       </div>
                     </div>
                   </div>
@@ -177,7 +185,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </div>
           </div>
           <div className="flex items-center gap-2 sm:gap-4">
-            <RoleSwitcher />
             {isMobile && (
               <button className="rounded-md p-2 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors">
                 <Search className="h-4 w-4" />
@@ -189,13 +196,20 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </button>
             <div className="hidden sm:flex items-center gap-3">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/20 text-xs font-medium text-primary">
-                {currentUser.name.split(' ').map(n => n[0]).join('')}
+                {initials}
               </div>
               <div>
-                <p className="text-sm font-medium text-foreground">{currentUser.name}</p>
-                <p className="text-xs text-muted-foreground capitalize">{role === 'REQUESTER' ? 'Usuário' : role === 'MANAGER' ? 'Gestor' : 'Analista'}</p>
+                <p className="text-sm font-medium text-foreground">{displayName}</p>
+                <p className="text-xs text-muted-foreground">{roleLabels[role] || role}</p>
               </div>
             </div>
+            <button
+              onClick={signOut}
+              className="rounded-md p-2 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+              title="Sair"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
           </div>
         </header>
 
