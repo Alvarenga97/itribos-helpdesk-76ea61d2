@@ -1,14 +1,24 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Ticket, Plus, BarChart3, Settings,
-  ChevronLeft, ChevronRight, Bell, Search, Menu, LogOut, Users
+  ChevronLeft, ChevronRight, Bell, Search, Menu, LogOut, Users, X
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import TicketzLogo from '@/components/TicketzLogo';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+
+interface Notification {
+  id: string;
+  message: string;
+  time: Date;
+  read: boolean;
+  link?: string;
+}
 
 const analystNav = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
@@ -63,12 +73,95 @@ const roleLabels: Record<string, string> = {
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [showNotifications, setShowNotifications] = useState(false);
   const isMobile = useIsMobile();
-  const { role, profile, signOut } = useAuth();
+  const { role, profile, user, signOut } = useAuth();
 
   const navItems = role === 'REQUESTER' ? requesterNav : analystNav;
   const displayName = profile?.name || 'Usuário';
   const initials = displayName.split(' ').map(n => n[0]).join('').slice(0, 2);
+  const unreadCount = notifications.filter(n => !n.read).length;
+
+  const addNotification = useCallback((message: string, link?: string) => {
+    const notif: Notification = {
+      id: crypto.randomUUID(),
+      message,
+      time: new Date(),
+      read: false,
+      link,
+    };
+    setNotifications(prev => [notif, ...prev].slice(0, 20));
+    toast.info(message, { duration: 4000 });
+  }, []);
+
+  // Subscribe to realtime events
+  useEffect(() => {
+    if (!user) return;
+
+    const ticketChannel = supabase
+      .channel('tickets-realtime')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'tickets' },
+        (payload) => {
+          const ticket = payload.new as any;
+          if (role !== 'REQUESTER') {
+            addNotification(
+              `Novo chamado #${ticket.ticket_number}: ${ticket.title}`,
+              `/tickets/${ticket.id}`
+            );
+          } else if (ticket.created_by === user.id) {
+            // requester sees their own new ticket confirmed
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'tickets' },
+        (payload) => {
+          const ticket = payload.new as any;
+          const old = payload.old as any;
+          if (old.status !== ticket.status) {
+            const statusLabels: Record<string, string> = {
+              OPEN: 'Aberto', IN_PROGRESS: 'Em Andamento', WAITING_REQUESTER: 'Aguardando',
+              RESOLVED: 'Resolvido', CLOSED: 'Fechado',
+            };
+            addNotification(
+              `Chamado #${ticket.ticket_number} → ${statusLabels[ticket.status] || ticket.status}`,
+              `/tickets/${ticket.id}`
+            );
+          }
+        }
+      )
+      .subscribe();
+
+    const commentChannel = supabase
+      .channel('comments-realtime')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'ticket_comments' },
+        (payload) => {
+          const comment = payload.new as any;
+          if (comment.user_id !== user.id) {
+            addNotification(
+              'Novo comentário em um chamado',
+              `/tickets/${comment.ticket_id}`
+            );
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(ticketChannel);
+      supabase.removeChannel(commentChannel);
+    };
+  }, [user, role, addNotification]);
+
+  const markAllRead = () => {
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  };
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -158,10 +251,67 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 <Search className="h-4 w-4" />
               </button>
             )}
-            <button className="relative rounded-lg p-2 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors">
-              <Bell className="h-4 w-4" />
-              <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-destructive animate-pulse-glow" />
-            </button>
+
+            {/* Notifications */}
+            <div className="relative">
+              <button
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="relative rounded-lg p-2 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+              >
+                <Bell className="h-4 w-4" />
+                {unreadCount > 0 && (
+                  <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-destructive-foreground">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
+
+              {showNotifications && (
+                <div className="absolute right-0 top-full mt-2 w-80 rounded-xl border border-border bg-card shadow-lg z-50">
+                  <div className="flex items-center justify-between border-b border-border px-4 py-3">
+                    <h3 className="text-sm font-semibold text-foreground">Notificações</h3>
+                    <div className="flex items-center gap-2">
+                      {unreadCount > 0 && (
+                        <button onClick={markAllRead} className="text-xs text-primary hover:underline">
+                          Marcar todas como lidas
+                        </button>
+                      )}
+                      <button onClick={() => setShowNotifications(false)} className="text-muted-foreground hover:text-foreground">
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="max-h-80 overflow-y-auto">
+                    {notifications.length === 0 ? (
+                      <div className="px-4 py-8 text-center text-sm text-muted-foreground">
+                        Nenhuma notificação
+                      </div>
+                    ) : (
+                      notifications.map(notif => (
+                        <Link
+                          key={notif.id}
+                          to={notif.link || '#'}
+                          onClick={() => {
+                            setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, read: true } : n));
+                            setShowNotifications(false);
+                          }}
+                          className={cn(
+                            'block px-4 py-3 border-b border-border last:border-0 hover:bg-muted/50 transition-colors',
+                            !notif.read && 'bg-primary/5'
+                          )}
+                        >
+                          <p className="text-sm text-foreground">{notif.message}</p>
+                          <p className="mt-0.5 text-[10px] text-muted-foreground">
+                            {notif.time.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                        </Link>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="hidden sm:flex items-center gap-3">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-xs font-medium text-primary">
                 {initials}
