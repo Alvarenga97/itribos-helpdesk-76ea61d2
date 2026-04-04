@@ -1,27 +1,55 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import type { Database } from '@/integrations/supabase/types';
+
+type TicketStatus = Database['public']['Enums']['ticket_status'];
+type TicketPriority = Database['public']['Enums']['ticket_priority'];
 
 export interface TicketRow {
   id: string;
   ticket_number: number;
   title: string;
   description: string;
-  status: 'OPEN' | 'IN_PROGRESS' | 'WAITING_REQUESTER' | 'RESOLVED' | 'CLOSED';
-  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  status: TicketStatus;
+  priority: TicketPriority;
   category_id: string | null;
   created_by: string;
   assigned_to: string | null;
   sla_deadline: string | null;
   sla_breached: boolean;
-  tags: string[];
+  tags: string[] | null;
   created_at: string;
   updated_at: string;
   resolved_at: string | null;
   // Joined
   category?: { id: string; name: string; color: string } | null;
-  requester?: { id: string; name: string; email: string } | null;
-  assignee?: { id: string; name: string; email: string } | null;
+  requester_profile?: { id: string; name: string; email: string } | null;
+  assignee_profile?: { id: string; name: string; email: string } | null;
+}
+
+async function enrichTicketsWithProfiles(tickets: any[]): Promise<TicketRow[]> {
+  if (tickets.length === 0) return [];
+
+  const userIds = new Set<string>();
+  tickets.forEach(t => {
+    if (t.created_by) userIds.add(t.created_by);
+    if (t.assigned_to) userIds.add(t.assigned_to);
+  });
+
+  const { data: profiles } = await supabase
+    .from('profiles')
+    .select('id, name, email')
+    .in('id', Array.from(userIds));
+
+  const profileMap = new Map((profiles ?? []).map(p => [p.id, p]));
+
+  return tickets.map(t => ({
+    ...t,
+    category: t.categories ?? null,
+    requester_profile: profileMap.get(t.created_by) ?? null,
+    assignee_profile: t.assigned_to ? profileMap.get(t.assigned_to) ?? null : null,
+  }));
 }
 
 export function useTickets(statusFilter?: string) {
@@ -30,21 +58,16 @@ export function useTickets(statusFilter?: string) {
     queryFn: async () => {
       let query = supabase
         .from('tickets')
-        .select(`
-          *,
-          category:categories(id, name, color),
-          requester:profiles!tickets_created_by_fkey(id, name, email),
-          assignee:profiles!tickets_assigned_to_fkey(id, name, email)
-        `)
+        .select('*, categories(*)')
         .order('created_at', { ascending: false });
 
       if (statusFilter && statusFilter !== 'ALL') {
-        query = query.eq('status', statusFilter);
+        query = query.eq('status', statusFilter as TicketStatus);
       }
 
       const { data, error } = await query;
       if (error) throw error;
-      return (data ?? []) as TicketRow[];
+      return enrichTicketsWithProfiles(data ?? []);
     },
   });
 }
@@ -56,16 +79,12 @@ export function useTicket(id: string | undefined) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('tickets')
-        .select(`
-          *,
-          category:categories(id, name, color),
-          requester:profiles!tickets_created_by_fkey(id, name, email),
-          assignee:profiles!tickets_assigned_to_fkey(id, name, email)
-        `)
+        .select('*, categories(*)')
         .eq('id', id!)
         .single();
       if (error) throw error;
-      return data as TicketRow;
+      const [enriched] = await enrichTicketsWithProfiles([data]);
+      return enriched;
     },
   });
 }
@@ -77,14 +96,26 @@ export function useTicketComments(ticketId: string | undefined) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('ticket_comments')
-        .select(`
-          *,
-          author:profiles!ticket_comments_user_id_fkey(id, name, email)
-        `)
+        .select('*')
         .eq('ticket_id', ticketId!)
         .order('created_at', { ascending: true });
       if (error) throw error;
-      return data ?? [];
+
+      // Enrich with profiles
+      const userIds = new Set<string>();
+      (data ?? []).forEach(c => userIds.add(c.user_id));
+
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, name, email')
+        .in('id', Array.from(userIds));
+
+      const profileMap = new Map((profiles ?? []).map(p => [p.id, p]));
+
+      return (data ?? []).map(c => ({
+        ...c,
+        author: profileMap.get(c.user_id) ?? { id: c.user_id, name: 'Desconhecido', email: '' },
+      }));
     },
   });
 }
@@ -103,9 +134,11 @@ export function useCreateTicket() {
       const { data, error } = await supabase
         .from('tickets')
         .insert({
-          ...ticket,
+          title: ticket.title,
+          description: ticket.description,
+          category_id: ticket.category_id,
+          priority: ticket.priority as TicketPriority,
           created_by: user!.id,
-          priority: ticket.priority as any,
         })
         .select()
         .single();
@@ -149,8 +182,8 @@ export function useUpdateTicketStatus() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const updateData: any = { status };
+    mutationFn: async ({ id, status }: { id: string; status: TicketStatus }) => {
+      const updateData: Record<string, any> = { status };
       if (status === 'RESOLVED') {
         updateData.resolved_at = new Date().toISOString();
       }
