@@ -57,6 +57,52 @@
     --font-mono: 'IBM Plex Mono', 'Fira Code', monospace;
     --font-body: 'Inter', system-ui, sans-serif;
   }
+
+  .dark {
+    --background: 220 20% 10%;
+    --foreground: 210 20% 92%;
+
+    --card: 220 18% 13%;
+    --card-foreground: 210 20% 92%;
+
+    --popover: 220 18% 13%;
+    --popover-foreground: 210 20% 92%;
+
+    --primary: 180 100% 25%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 14% 18%;
+    --secondary-foreground: 210 16% 70%;
+
+    --muted: 220 14% 16%;
+    --muted-foreground: 215 16% 55%;
+
+    --accent: 220 20% 18%;
+    --accent-foreground: 210 20% 92%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 14% 20%;
+    --input: 220 14% 20%;
+    --ring: 180 100% 25%;
+
+    --sidebar-background: 220 20% 8%;
+    --sidebar-foreground: 210 20% 70%;
+    --sidebar-primary: 174 100% 40%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 18% 15%;
+    --sidebar-accent-foreground: 0 0% 95%;
+    --sidebar-border: 220 14% 16%;
+    --sidebar-ring: 174 100% 40%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 38 92% 10%;
+    --success: 152 69% 31%;
+    --success-foreground: 0 0% 100%;
+    --info: 180 100% 25%;
+    --info-foreground: 0 0% 100%;
+  }
 }
 
 @layer base {

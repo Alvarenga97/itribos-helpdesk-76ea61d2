@@ -2,8 +2,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Ticket, Plus, BarChart3, Settings,
-  ChevronLeft, ChevronRight, Bell, Search, Menu, LogOut, Users, X
+  ChevronLeft, ChevronRight, Bell, Search, Menu, LogOut, Users, X, Sun, Moon
 } from 'lucide-react';
+import { useTheme } from '@/hooks/useTheme';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -77,6 +78,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [showNotifications, setShowNotifications] = useState(false);
   const isMobile = useIsMobile();
   const { role, profile, user, signOut } = useAuth();
+  const { isDark, toggle: toggleTheme } = useTheme();
 
   const navItems = role === 'REQUESTER' ? requesterNav : analystNav;
   const displayName = profile?.name || 'Usuário';
@@ -251,6 +253,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 <Search className="h-4 w-4" />
               </button>
             )}
+
+            {/* Theme Toggle */}
+            <button
+              onClick={toggleTheme}
+              className="rounded-lg p-2 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+              title={isDark ? 'Modo claro' : 'Modo escuro'}
+            >
+              {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </button>
 
             {/* Notifications */}
             <div className="relative">
