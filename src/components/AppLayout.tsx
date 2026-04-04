@@ -254,6 +254,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               </button>
             )}
 
+            {/* Theme Toggle */}
+            <button
+              onClick={toggleTheme}
+              className="rounded-lg p-2 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+              title={isDark ? 'Modo claro' : 'Modo escuro'}
+            >
+              {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </button>
+
             {/* Notifications */}
             <div className="relative">
               <button
