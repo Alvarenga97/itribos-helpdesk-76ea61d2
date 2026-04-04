@@ -200,6 +200,41 @@ export function useUpdateTicketStatus() {
   });
 }
 
+export function useDeleteTicket() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('tickets')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tickets'] });
+    },
+  });
+}
+
+export function useAssignTicket() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, userId }: { id: string; userId: string }) => {
+      const { error } = await supabase
+        .from('tickets')
+        .update({ assigned_to: userId })
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['tickets'] });
+      queryClient.invalidateQueries({ queryKey: ['ticket', variables.id] });
+    },
+  });
+}
+
 export function useCategories() {
   return useQuery({
     queryKey: ['categories'],
