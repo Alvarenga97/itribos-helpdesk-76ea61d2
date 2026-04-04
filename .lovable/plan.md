@@ -1,93 +1,122 @@
 
 
-# Plano: Autenticação Supabase + Banco de Dados + CSAT Feedback
+# Plano: Redesign Completo + Gestão de Usuários + Resumo STAR por IA
 
 ## Resumo
-Criar toda a infraestrutura de banco de dados no Supabase (tabelas, RLS, triggers), implementar autenticação real com email/senha, migrar páginas de mock para dados reais, e adicionar formulário CSAT funcional.
+Reconstruir o design visual com a nova identidade corporativa (Teal/Azul/Verde), criar página de gestão de usuários para admin/agente, e implementar geração automática de resumo STAR via Edge Function com IA quando um chamado é resolvido.
 
 ---
 
-## Etapa 1 — Migração SQL (banco de dados)
+## Parte 1 — Redesign da Identidade Visual
 
-Criar em uma única migração:
+### 1.1 CSS/Tokens (`src/index.css`)
+Substituir a paleta dark-mode atual por uma estética **light corporativa limpa**:
+- `--primary`: Teal `#008080` (botões de ação)
+- `--sidebar/header`: Azul Corporativo `#004080`
+- `--success`: Verde Solução `#00A060`
+- `--background`: Branco `#FAFBFC`
+- `--card`: Branco `#FFFFFF` com sombra sutil
+- `--border`: Cinza claro `#E2E8F0`
+- `--foreground`: Cinza escuro `#1A202C`
+- `--muted-foreground`: `#64748B`
+- Fontes: Inter (body/display) + IBM Plex Mono (mono)
+- `--radius`: `12px` (bordas suavemente arredondadas)
+- Remover gradientes dark (card-gradient, bg-glow, glow-border)
 
-**Tipos e tabelas:**
-- Enum `app_role`: REQUESTER, AGENT, MANAGER, ADMIN
-- Enum `ticket_status`: OPEN, IN_PROGRESS, WAITING_REQUESTER, RESOLVED, CLOSED
-- Enum `ticket_priority`: LOW, MEDIUM, HIGH, CRITICAL
-- `profiles` (id uuid PK → auth.users, name, email, avatar_url, created_at)
-- `user_roles` (id, user_id → auth.users, role app_role, UNIQUE(user_id, role))
-- `categories` (id, name, color)
-- `tickets` (id, ticket_number serial, title, description, status, priority, category_id → categories, created_by → auth.users, assigned_to → auth.users nullable, sla_deadline, sla_breached, tags text[], created_at, resolved_at)
-- `ticket_comments` (id, ticket_id → tickets, user_id → auth.users, content, is_internal bool, created_at)
-- `csat_feedback` (id, ticket_id → tickets, user_id → auth.users, rating smallint CHECK 1-5, comment text nullable, created_at, UNIQUE(ticket_id, user_id))
+### 1.2 Tailwind Config (`tailwind.config.ts`)
+Atualizar `fontFamily` para usar Inter. Manter animações existentes.
 
-**Funções helper (SECURITY DEFINER):**
-- `has_role(uuid, app_role) → boolean`
-- `is_agent_or_above(uuid) → boolean`
-- `handle_new_user()` — trigger que cria profile + role REQUESTER automaticamente
+### 1.3 Logo/Ícone Central — "Token da Resposta"
+Criar componente `src/components/TicketzLogo.tsx` com ícone SVG: ticket sólido com checkmark branco integrado. Usado no sidebar, login e header.
 
-**RLS policies:**
-- profiles: leitura própria + agentes/managers/admins leem todos
-- user_roles: leitura via has_role; inserção apenas admin
-- categories: leitura para todos autenticados; escrita admin
-- tickets: requesters veem próprios; agentes+ veem todos; insert por autenticados
-- ticket_comments: baseado em acesso ao ticket; internos apenas agentes+
-- csat_feedback: INSERT apenas dono do ticket se resolvido; SELECT dono + agentes+; sem UPDATE/DELETE
-
-**Seed data:** categorias iniciais (Infraestrutura, Software, Rede, Segurança, Acesso)
-
----
-
-## Etapa 2 — Autenticação
-
-**Novos arquivos:**
-- `src/contexts/AuthContext.tsx` — Provider com `onAuthStateChange`, expõe user, profile, role, signIn, signUp, signOut
-- `src/components/ProtectedRoute.tsx` — redireciona para /login se não autenticado
-
-**Arquivos editados:**
-- `src/pages/Login.tsx` — chamar `supabase.auth.signInWithPassword`, exibir erros, redirecionar
-- `src/App.tsx` — substituir RoleProvider por AuthProvider, envolver rotas com ProtectedRoute
-- `src/components/AppLayout.tsx` — remover RoleSwitcher, usar role real do AuthContext, adicionar logout
+### 1.4 Componentes atualizados visualmente (sem mudança de lógica):
+- `AppLayout.tsx` — Sidebar com fundo Azul Corporativo (`#004080`), texto branco, item ativo com highlight Teal. Header branco com sombra sutil.
+- `Login.tsx` — Fundo branco, card centralizado com sombra, botão Teal, logo "Token da Resposta".
+- `StatCard.tsx` — Cards brancos com borda fina, ícone colorido, sem gradientes.
+- `TicketBadges.tsx` — Badges com cores atualizadas (success = `#00A060`).
+- `CsatFeedbackForm.tsx` — Adaptar cores para o tema light.
+- `Index.tsx` (Dashboard) — **Simplificar para 3 métricas**: Abertos, Em Andamento, Resolvidos. Remover SLA e performance do dashboard principal.
+- `NewTicket.tsx` — **Simplificar**: apenas Título, Descrição e Prioridade (remover categoria e anexos do formulário inicial). Campo de categoria se torna opcional.
+- `RequesterHome.tsx`, `TicketList.tsx`, `TicketDetail.tsx`, `Reports.tsx`, `Settings.tsx` — Adaptar para tema light e novas cores.
 
 ---
 
-## Etapa 3 — Migrar páginas para dados reais
+## Parte 2 — Página de Gestão de Usuários
 
-**Novos hooks:**
-- `src/hooks/useTickets.ts` — queries React Query + Supabase para listar/buscar tickets
-- `src/hooks/useCsatFeedback.ts` — query + mutation para csat_feedback
+### 2.1 Nova rota e página
+- Rota: `/users` (apenas para AGENT, MANAGER, ADMIN)
+- Arquivo: `src/pages/UserManagement.tsx`
 
-**Páginas atualizadas:**
-- `RequesterHome.tsx` — buscar tickets do usuário logado
-- `Index.tsx` (Dashboard) — stats reais via queries
-- `TicketList.tsx` — query com filtros reais
-- `TicketDetail.tsx` — ticket + comments reais
-- `NewTicket.tsx` — inserir ticket via Supabase
+### 2.2 Funcionalidades
+- **Listar todos os usuários**: tabela com nome, email, role, data de criação
+- **Criar usuário**: modal/formulário com nome, email, senha, role (usa `supabase.auth.admin` via Edge Function)
+- **Editar role**: dropdown para alterar role do usuário (INSERT/DELETE em user_roles)
+- **Desativar usuário**: marcar como inativo (via Edge Function para `admin.deleteUser` ou flag)
 
----
+### 2.3 Edge Function: `manage-users`
+- Endpoint para criar usuários (`supabase.auth.admin.createUser`) e alterar roles
+- Usa `SUPABASE_SERVICE_ROLE_KEY` para operações admin
+- Valida que o chamador tem role ADMIN ou AGENT antes de executar
 
-## Etapa 4 — Formulário CSAT
+### 2.4 Hook: `src/hooks/useUsers.ts`
+- `useUsers()` — lista profiles + roles
+- `useCreateUser()` — chama edge function
+- `useUpdateUserRole()` — atualiza user_roles
 
-**Novo componente:** `src/components/CsatFeedbackForm.tsx`
-- 5 estrelas clicáveis com hover + textarea opcional
-- Mutation: INSERT em csat_feedback
-- Toast de sucesso após envio
-- Modo read-only após envio
-
-**Integração em `TicketDetail.tsx`:**
-- Condição: role === REQUESTER && status === RESOLVED && sem feedback existente
-- Se já avaliou: exibe estrelas read-only
-- Se não: exibe formulário
-- Constraint UNIQUE(ticket_id, user_id) no banco impede duplicatas mesmo se UI falhar
+### 2.5 Navegação
+- Adicionar item "Usuários" no `analystNav` do `AppLayout.tsx`
+- Adicionar rota `/users` no `App.tsx` com `ProtectedRoute`
+- Adicionar case `users` no `RoleRouter.tsx`
 
 ---
 
-## Detalhes Técnicos
+## Parte 3 — Resumo STAR Automático por IA
 
-- Constraint `UNIQUE(ticket_id, user_id)` é a garantia principal contra reavaliação
-- `CHECK (rating >= 1 AND rating <= 5)` valida no banco
-- Funções `SECURITY DEFINER` evitam recursão infinita em RLS
-- Trigger `on_auth_user_created` cria perfil + role REQUESTER automaticamente
-- AuthContext substitui completamente o RoleContext atual
+### 3.1 Tabela `star_summaries` (migração SQL)
+```
+id uuid PK default gen_random_uuid()
+ticket_id uuid FK tickets UNIQUE
+situation text
+task text
+action text
+result text
+created_at timestamptz default now()
+```
+RLS: SELECT para dono do ticket + agentes+; INSERT/UPDATE bloqueado (apenas via edge function com service role).
 
+### 3.2 Edge Function: `generate-star-summary`
+- Trigger: chamada pelo frontend quando `useUpdateTicketStatus` muda para `RESOLVED`
+- Input: `ticket_id`
+- Lógica:
+  1. Busca ticket (título, descrição) + comentários do ticket
+  2. Monta prompt para IA solicitando resumo STAR em português
+  3. Chama API de IA (OpenAI ou similar via `LOVABLE_API_KEY` ou nova secret `OPENAI_API_KEY`)
+  4. Insere resultado em `star_summaries`
+- Retorna o resumo gerado
+
+### 3.3 Hook: `src/hooks/useStarSummary.ts`
+- `useStarSummary(ticketId)` — busca resumo existente
+- Chamado no `TicketDetail.tsx` para exibir o resumo
+
+### 3.4 Integração no frontend
+- `TicketDetail.tsx`: após resolver, chama edge function para gerar STAR. Exibe seção "Resumo STAR" com os 4 campos (Situação, Tarefa, Ação, Resultado) em cards coloridos.
+- `useUpdateTicketStatus`: após sucesso ao resolver, dispara `generate-star-summary`
+
+### 3.5 Secret necessária
+- `OPENAI_API_KEY` — precisa ser configurada pelo usuário no Supabase
+
+---
+
+## Arquivos Novos
+- `src/components/TicketzLogo.tsx`
+- `src/pages/UserManagement.tsx`
+- `src/hooks/useUsers.ts`
+- `src/hooks/useStarSummary.ts`
+- `supabase/functions/manage-users/index.ts`
+- `supabase/functions/generate-star-summary/index.ts`
+- Migração SQL (tabela `star_summaries`)
+
+## Arquivos Editados
+- `src/index.css` — nova paleta light corporativa
+- `tailwind.config.ts` — fonte Inter
+- `src/App.tsx` — r
