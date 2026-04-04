@@ -78,6 +78,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [showNotifications, setShowNotifications] = useState(false);
   const isMobile = useIsMobile();
   const { role, profile, user, signOut } = useAuth();
+  const { isDark, toggle: toggleTheme } = useTheme();
 
   const navItems = role === 'REQUESTER' ? requesterNav : analystNav;
   const displayName = profile?.name || 'Usuário';
