@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { Plus, X, Mail } from 'lucide-react';
 import { useSettings, useUpdateSettings } from '@/hooks/useSettings';
 import { toast } from 'sonner';
 
@@ -10,7 +11,8 @@ export default function SettingsPage() {
   const [orgName, setOrgName] = useState('');
   const [reportTime, setReportTime] = useState('18:00');
   const [reportTimezone, setReportTimezone] = useState('America/Sao_Paulo');
-  const [webhookUrl, setWebhookUrl] = useState('');
+  const [reportEmails, setReportEmails] = useState<string[]>([]);
+  const [newEmail, setNewEmail] = useState('');
   const [sla, setSla] = useState({
     critical_response: '15 min', critical_resolution: '2h',
     high_response: '30 min', high_resolution: '4h',
@@ -23,7 +25,7 @@ export default function SettingsPage() {
       setOrgName(settings.org_name);
       setReportTime(settings.report_time);
       setReportTimezone(settings.report_timezone);
-      setWebhookUrl(settings.webhook_url);
+      setReportEmails(settings.report_emails || []);
       setSla({
         critical_response: settings.sla_critical_response,
         critical_resolution: settings.sla_critical_resolution,
@@ -37,6 +39,25 @@ export default function SettingsPage() {
     }
   }, [settings]);
 
+  const handleAddEmail = () => {
+    const email = newEmail.trim().toLowerCase();
+    if (!email) return;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      toast.error('E-mail inválido');
+      return;
+    }
+    if (reportEmails.includes(email)) {
+      toast.error('E-mail já adicionado');
+      return;
+    }
+    setReportEmails(prev => [...prev, email]);
+    setNewEmail('');
+  };
+
+  const handleRemoveEmail = (email: string) => {
+    setReportEmails(prev => prev.filter(e => e !== email));
+  };
+
   const handleSave = async () => {
     try {
       await updateSettings.mutateAsync({
@@ -44,7 +65,7 @@ export default function SettingsPage() {
         org_slug: orgName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
         report_time: reportTime,
         report_timezone: reportTimezone,
-        webhook_url: webhookUrl,
+        report_emails: reportEmails,
         sla_critical_response: sla.critical_response,
         sla_critical_resolution: sla.critical_resolution,
         sla_high_response: sla.high_response,
@@ -97,7 +118,7 @@ export default function SettingsPage() {
 
         <div className="rounded-xl border border-border bg-card p-6 shadow-sm space-y-5">
           <h2 className="text-sm font-semibold font-display text-foreground">Relatório Diário</h2>
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
             <div>
               <label className="block text-sm font-medium text-foreground mb-1.5">Horário</label>
               <input type="time" value={reportTime} onChange={e => setReportTime(e.target.value)} className={inputClass} />
@@ -112,10 +133,45 @@ export default function SettingsPage() {
                 <option>Europe/Berlin</option>
               </select>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1.5">Webhook</label>
-              <input value={webhookUrl} onChange={e => setWebhookUrl(e.target.value)} placeholder="https://hooks.slack.com/..." className={inputClass} />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1.5">
+              <Mail className="inline h-4 w-4 mr-1.5 -mt-0.5" />
+              E-mails para Relatório
+            </label>
+            <p className="text-xs text-muted-foreground mb-3">Estes e-mails receberão o relatório diário automaticamente.</p>
+            
+            <div className="flex gap-2">
+              <input
+                type="email"
+                value={newEmail}
+                onChange={e => setNewEmail(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleAddEmail())}
+                placeholder="email@exemplo.com"
+                className={inputClass}
+              />
+              <button
+                type="button"
+                onClick={handleAddEmail}
+                className="shrink-0 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+              >
+                <Plus className="h-4 w-4" />
+              </button>
             </div>
+
+            {reportEmails.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {reportEmails.map(email => (
+                  <span key={email} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted px-3 py-1 text-xs text-foreground">
+                    {email}
+                    <button onClick={() => handleRemoveEmail(email)} className="text-muted-foreground hover:text-destructive transition-colors">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 

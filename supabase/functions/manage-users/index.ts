@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -26,14 +26,12 @@ serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsError } = await supabaseUser.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims) {
+    const { data: { user: callerUser }, error: authError } = await supabaseUser.auth.getUser();
+    if (authError || !callerUser) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
-    const callerId = claimsData.claims.sub as string;
+    const callerId = callerUser.id;
 
-    // Check caller is agent+
     const { data: isAgent } = await supabaseAdmin.rpc("is_agent_or_above", { _user_id: callerId });
     if (!isAgent) {
       return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -59,7 +57,6 @@ serve(async (req) => {
         return new Response(JSON.stringify({ error: createError.message }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
-      // Update role if not REQUESTER (trigger already creates REQUESTER)
       if (role !== "REQUESTER" && newUser.user) {
         await supabaseAdmin.from("user_roles").update({ role }).eq("user_id", newUser.user.id);
       }
@@ -73,11 +70,50 @@ serve(async (req) => {
         return new Response(JSON.stringify({ error: "Missing fields" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
-      // Delete existing roles and insert new one
       await supabaseAdmin.from("user_roles").delete().eq("user_id", user_id);
       const { error: insertError } = await supabaseAdmin.from("user_roles").insert({ user_id, role });
       if (insertError) {
         return new Response(JSON.stringify({ error: insertError.message }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    if (action === "reset_password") {
+      const { user_id } = body;
+      if (!user_id) {
+        return new Response(JSON.stringify({ error: "Missing user_id" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      // Get user email
+      const { data: { user: targetUser }, error: getUserErr } = await supabaseAdmin.auth.admin.getUserById(user_id);
+      if (getUserErr || !targetUser?.email) {
+        return new Response(JSON.stringify({ error: "User not found" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      // Generate a new temporary password
+      const tempPassword = crypto.randomUUID().slice(0, 12) + "Aa1!";
+      const { error: updateErr } = await supabaseAdmin.auth.admin.updateUserById(user_id, { password: tempPassword });
+      if (updateErr) {
+        return new Response(JSON.stringify({ error: updateErr.message }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      return new Response(JSON.stringify({ success: true, temp_password: tempPassword }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    if (action === "delete_user") {
+      const { user_id } = body;
+      if (!user_id) {
+        return new Response(JSON.stringify({ error: "Missing user_id" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      if (user_id === callerId) {
+        return new Response(JSON.stringify({ error: "Cannot delete yourself" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      const { error: deleteErr } = await supabaseAdmin.auth.admin.deleteUser(user_id);
+      if (deleteErr) {
+        return new Response(JSON.stringify({ error: deleteErr.message }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
