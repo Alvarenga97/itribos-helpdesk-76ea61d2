@@ -1,23 +1,27 @@
 import { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Clock, User, MessageSquare, Lock, Sparkles, Trash2, UserCheck } from 'lucide-react';
+import { ArrowLeft, Clock, User, MessageSquare, Lock, Sparkles, Trash2, UserCheck, RotateCcw } from 'lucide-react';
 import { StatusBadge, PriorityBadge } from '@/components/TicketBadges';
-import { useTicket, useTicketComments, useAddComment, useUpdateTicketStatus, useDeleteTicket, useAssignTicket } from '@/hooks/useTickets';
+import { useTicket, useTicketComments, useAddComment, useUpdateTicketStatus, useDeleteTicket, useAssignTicket, useCategories } from '@/hooks/useTickets';
 import { useAuth } from '@/contexts/AuthContext';
 import CsatFeedbackForm from '@/components/CsatFeedbackForm';
 import { useStarSummary, useGenerateStarSummary } from '@/hooks/useStarSummary';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
 
 export default function TicketDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { role, user } = useAuth();
   const isRequester = role === 'REQUESTER';
   const { data: ticket, isLoading } = useTicket(id);
   const { data: comments = [] } = useTicketComments(id);
   const { data: starSummary } = useStarSummary(id);
+  const { data: categories = [] } = useCategories();
   const addComment = useAddComment();
   const updateStatus = useUpdateTicketStatus();
   const deleteTicket = useDeleteTicket();
@@ -67,6 +71,15 @@ export default function TicketDetail() {
     }
   };
 
+  const handleReopen = async () => {
+    try {
+      await updateStatus.mutateAsync({ id: ticket.id, status: 'IN_PROGRESS' });
+      toast.success('Chamado reaberto');
+    } catch {
+      toast.error('Erro ao reabrir chamado');
+    }
+  };
+
   const handleDelete = async () => {
     try {
       await deleteTicket.mutateAsync(ticket.id);
@@ -84,6 +97,21 @@ export default function TicketDetail() {
       toast.success('Chamado atribuído a você');
     } catch {
       toast.error('Erro ao atribuir chamado');
+    }
+  };
+
+  const handleCategoryChange = async (categoryId: string) => {
+    try {
+      const { error } = await supabase
+        .from('tickets')
+        .update({ category_id: categoryId || null })
+        .eq('id', ticket.id);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['ticket', ticket.id] });
+      queryClient.invalidateQueries({ queryKey: ['tickets'] });
+      toast.success('Categoria atualizada');
+    } catch {
+      toast.error('Erro ao atualizar categoria');
     }
   };
 
@@ -136,6 +164,18 @@ export default function TicketDetail() {
                 className="rounded-lg bg-success px-4 py-2 text-sm font-medium text-success-foreground hover:bg-success/90 transition-colors disabled:opacity-50"
               >
                 {updateStatus.isPending ? 'Resolvendo...' : 'Resolver Chamado'}
+              </button>
+            )}
+
+            {/* Reopen */}
+            {!isRequester && ticket.status === 'RESOLVED' && (
+              <button
+                onClick={handleReopen}
+                disabled={updateStatus.isPending}
+                className="inline-flex items-center gap-2 rounded-lg border border-warning/30 bg-warning/10 px-4 py-2 text-sm font-medium text-warning hover:bg-warning/20 transition-colors disabled:opacity-50"
+              >
+                <RotateCcw className="h-4 w-4" />
+                {updateStatus.isPending ? 'Reabrindo...' : 'Reabrir Chamado'}
               </button>
             )}
 
@@ -201,15 +241,31 @@ export default function TicketDetail() {
                     <span className="text-sm text-foreground">{ticket.assignee_profile?.name || 'Aguardando atribuição'}</span>
                   </div>
                 </div>
-                {ticket.category && (
-                  <div>
-                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Categoria</span>
+
+                {/* Category dropdown for agents */}
+                <div>
+                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Categoria</span>
+                  {!isRequester ? (
+                    <select
+                      value={ticket.category_id || ''}
+                      onChange={e => handleCategoryChange(e.target.value)}
+                      className="mt-1 w-full rounded-lg border border-border bg-background px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/20"
+                    >
+                      <option value="">Sem categoria</option>
+                      {categories.map(cat => (
+                        <option key={cat.id} value={cat.id}>{cat.name}</option>
+                      ))}
+                    </select>
+                  ) : ticket.category ? (
                     <div className="mt-1 flex items-center gap-2">
                       <div className="h-2 w-2 rounded-full" style={{ backgroundColor: ticket.category.color }} />
                       <span className="text-sm text-foreground">{ticket.category.name}</span>
                     </div>
-                  </div>
-                )}
+                  ) : (
+                    <p className="mt-1 text-sm text-muted-foreground italic">Não definida</p>
+                  )}
+                </div>
+
                 {!isRequester && slaTime && (
                   <div>
                     <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Prazo SLA</span>
