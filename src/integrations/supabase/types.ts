@@ -102,6 +102,7 @@ export type Database = {
           id: string
           org_name: string
           org_slug: string
+          report_emails: string[]
           report_time: string
           report_timezone: string
           sla_critical_resolution: string
@@ -113,12 +114,12 @@ export type Database = {
           sla_medium_resolution: string
           sla_medium_response: string
           updated_at: string
-          webhook_url: string
         }
         Insert: {
           id?: string
           org_name?: string
           org_slug?: string
+          report_emails?: string[]
           report_time?: string
           report_timezone?: string
           sla_critical_resolution?: string
@@ -130,12 +131,12 @@ export type Database = {
           sla_medium_resolution?: string
           sla_medium_response?: string
           updated_at?: string
-          webhook_url?: string
         }
         Update: {
           id?: string
           org_name?: string
           org_slug?: string
+          report_emails?: string[]
           report_time?: string
           report_timezone?: string
           sla_critical_resolution?: string
@@ -147,7 +148,6 @@ export type Database = {
           sla_medium_resolution?: string
           sla_medium_response?: string
           updated_at?: string
-          webhook_url?: string
         }
         Relationships: []
       }

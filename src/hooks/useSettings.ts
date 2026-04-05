@@ -7,7 +7,7 @@ export interface Settings {
   org_slug: string;
   report_time: string;
   report_timezone: string;
-  webhook_url: string;
+  report_emails: string[];
   sla_critical_response: string;
   sla_critical_resolution: string;
   sla_high_response: string;
@@ -39,7 +39,6 @@ export function useUpdateSettings() {
 
   return useMutation({
     mutationFn: async (updates: Partial<Omit<Settings, 'id' | 'updated_at'>>) => {
-      // Get the single settings row
       const { data: existing } = await supabase
         .from('settings' as any)
         .select('id')

@@ -2,13 +2,14 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft } from 'lucide-react';
-import { useCreateTicket } from '@/hooks/useTickets';
+import { useCreateTicket, useCategories } from '@/hooks/useTickets';
 import { toast } from 'sonner';
 
 export default function NewTicket() {
   const navigate = useNavigate();
   const createTicket = useCreateTicket();
-  const [form, setForm] = useState({ title: '', description: '', priority: 'MEDIUM' });
+  const { data: categories = [] } = useCategories();
+  const [form, setForm] = useState({ title: '', description: '', priority: 'MEDIUM', category_id: '' });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -16,7 +17,7 @@ export default function NewTicket() {
       await createTicket.mutateAsync({
         title: form.title,
         description: form.description,
-        category_id: '',
+        category_id: form.category_id,
         priority: form.priority,
       });
       toast.success('Chamado criado com sucesso!');
@@ -63,18 +64,34 @@ export default function NewTicket() {
               />
             </div>
 
-            <div className="max-w-xs">
-              <label className="block text-sm font-medium text-foreground mb-1.5">Prioridade</label>
-              <select
-                value={form.priority}
-                onChange={e => setForm({ ...form, priority: e.target.value })}
-                className={inputClass}
-              >
-                <option value="LOW">Baixa</option>
-                <option value="MEDIUM">Média</option>
-                <option value="HIGH">Alta</option>
-                <option value="CRITICAL">Crítica</option>
-              </select>
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1.5">Categoria</label>
+                <select
+                  value={form.category_id}
+                  onChange={e => setForm({ ...form, category_id: e.target.value })}
+                  className={inputClass}
+                >
+                  <option value="">Selecione uma categoria</option>
+                  {categories.map(cat => (
+                    <option key={cat.id} value={cat.id}>{cat.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1.5">Prioridade</label>
+                <select
+                  value={form.priority}
+                  onChange={e => setForm({ ...form, priority: e.target.value })}
+                  className={inputClass}
+                >
+                  <option value="LOW">Baixa</option>
+                  <option value="MEDIUM">Média</option>
+                  <option value="HIGH">Alta</option>
+                  <option value="CRITICAL">Crítica</option>
+                </select>
+              </div>
             </div>
           </div>
 

@@ -224,7 +224,7 @@ export function useAssignTicket() {
     mutationFn: async ({ id, userId }: { id: string; userId: string }) => {
       const { error } = await supabase
         .from('tickets')
-        .update({ assigned_to: userId })
+        .update({ assigned_to: userId, status: 'IN_PROGRESS' as TicketStatus })
         .eq('id', id);
       if (error) throw error;
     },

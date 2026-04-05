@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Shield } from 'lucide-react';
-import { useUsers, useCreateUser, useUpdateUserRole } from '@/hooks/useUsers';
+import { Plus, KeyRound, Trash2, Copy } from 'lucide-react';
+import { useUsers, useCreateUser, useUpdateUserRole, useResetUserPassword, useDeleteUser } from '@/hooks/useUsers';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -20,11 +21,16 @@ const roleColors: Record<string, string> = {
 };
 
 export default function UserManagement() {
+  const { user: currentUser } = useAuth();
   const { data: users = [], isLoading } = useUsers();
   const createUser = useCreateUser();
   const updateRole = useUpdateUserRole();
+  const resetPassword = useResetUserPassword();
+  const deleteUser = useDeleteUser();
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'REQUESTER' });
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [tempPassword, setTempPassword] = useState<{ userId: string; password: string } | null>(null);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,6 +53,31 @@ export default function UserManagement() {
     }
   };
 
+  const handleResetPassword = async (userId: string) => {
+    try {
+      const result = await resetPassword.mutateAsync(userId);
+      setTempPassword({ userId, password: result.temp_password });
+      toast.success('Senha resetada com sucesso');
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao resetar senha');
+    }
+  };
+
+  const handleDelete = async (userId: string) => {
+    try {
+      await deleteUser.mutateAsync(userId);
+      toast.success('Usuário excluído');
+      setConfirmDelete(null);
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao excluir usuário');
+    }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success('Senha copiada!');
+  };
+
   const inputClass = 'w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/20';
 
   return (
@@ -64,6 +95,26 @@ export default function UserManagement() {
           Novo Usuário
         </button>
       </div>
+
+      {/* Temp password dialog */}
+      {tempPassword && (
+        <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 shadow-sm">
+          <p className="text-sm font-medium text-foreground">Senha temporária gerada:</p>
+          <div className="mt-2 flex items-center gap-2">
+            <code className="flex-1 rounded-lg border border-border bg-background px-3 py-2 font-mono text-sm text-foreground">
+              {tempPassword.password}
+            </code>
+            <button
+              onClick={() => copyToClipboard(tempPassword.password)}
+              className="rounded-lg border border-border p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            >
+              <Copy className="h-4 w-4" />
+            </button>
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">Copie e envie ao usuário. Ele deverá trocar na próxima sessão.</p>
+          <button onClick={() => setTempPassword(null)} className="mt-2 text-xs text-primary hover:underline">Fechar</button>
+        </div>
+      )}
 
       {showForm && (
         <motion.form
@@ -126,7 +177,7 @@ export default function UserManagement() {
                     <p className="text-xs text-muted-foreground truncate">{u.email}</p>
                   </div>
                 </div>
-                <div className="mt-3 flex items-center justify-between">
+                <div className="mt-3 flex items-center justify-between gap-2">
                   <select
                     value={u.role}
                     onChange={e => handleRoleChange(u.id, e.target.value)}
@@ -137,9 +188,36 @@ export default function UserManagement() {
                     <option value="MANAGER">Gestor</option>
                     <option value="ADMIN">Admin</option>
                   </select>
-                  <span className="text-xs text-muted-foreground">
-                    {new Date(u.created_at).toLocaleDateString('pt-BR')}
-                  </span>
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => handleResetPassword(u.id)}
+                      disabled={resetPassword.isPending}
+                      className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                      title="Resetar senha"
+                    >
+                      <KeyRound className="h-4 w-4" />
+                    </button>
+                    {u.id !== currentUser?.id && (
+                      confirmDelete === u.id ? (
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => handleDelete(u.id)} disabled={deleteUser.isPending} className="rounded bg-destructive px-2 py-1 text-[10px] font-medium text-destructive-foreground">
+                            Sim
+                          </button>
+                          <button onClick={() => setConfirmDelete(null)} className="rounded border border-border px-2 py-1 text-[10px] font-medium">
+                            Não
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setConfirmDelete(u.id)}
+                          className="rounded-lg p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                          title="Excluir usuário"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      )
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
@@ -154,6 +232,7 @@ export default function UserManagement() {
                   <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">E-mail</th>
                   <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Papel</th>
                   <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Desde</th>
+                  <th className="px-5 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -182,6 +261,38 @@ export default function UserManagement() {
                     </td>
                     <td className="px-5 py-3.5 text-sm text-muted-foreground">
                       {new Date(u.created_at).toLocaleDateString('pt-BR')}
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={() => handleResetPassword(u.id)}
+                          disabled={resetPassword.isPending}
+                          className="rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                          title="Resetar senha"
+                        >
+                          <KeyRound className="h-4 w-4" />
+                        </button>
+                        {u.id !== currentUser?.id && (
+                          confirmDelete === u.id ? (
+                            <div className="flex items-center gap-1">
+                              <button onClick={() => handleDelete(u.id)} disabled={deleteUser.isPending} className="rounded bg-destructive px-2 py-1 text-xs font-medium text-destructive-foreground">
+                                Sim
+                              </button>
+                              <button onClick={() => setConfirmDelete(null)} className="rounded border border-border px-2 py-1 text-xs font-medium text-foreground">
+                                Não
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => setConfirmDelete(u.id)}
+                              className="rounded-lg p-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                              title="Excluir usuário"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          )
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
